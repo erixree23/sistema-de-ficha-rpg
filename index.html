@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Véu RPG - Sistema de Fichas de Personagem com design Liquid Glass">
+  <title>Véu RPG | Autenticação</title>
+  <link rel="stylesheet" href="assets/css/global.css">
+  <link rel="stylesheet" href="assets/css/auth.css">
+</head>
+<body>
+  <!-- Ambient Glass Blobs Background -->
+  <div class="ambient-blobs" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <main class="auth-page">
+    <!-- Topbar with Theme Toggle -->
+    <header class="auth-topbar">
+      <button id="themeToggleBtn" class="theme-toggle-btn" type="button" aria-label="Alternar tema claro e escuro">
+        <!-- Sun icon (shown in dark mode) -->
+        <svg class="icon-sun" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <!-- Moon icon (shown in light mode) -->
+        <svg class="icon-moon" viewBox="0 0 24 24">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+        <span id="themeToggleLabel">Tema</span>
+      </button>
+    </header>
+
+    <!-- Glass Auth Card -->
+    <section class="auth-card glass-panel" aria-labelledby="authTitle">
+      <header class="auth-header">
+        <div class="auth-logo-badge" aria-hidden="true">
+          <!-- Mystical RPG D20 / Crystal SVG -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <polygon points="12 2 2 8.5 12 15 22 8.5 12 2"></polygon>
+            <polygon points="2 8.5 12 15 12 22 2 15.5 2 8.5"></polygon>
+            <polygon points="22 8.5 12 15 12 22 22 15.5 22 8.5"></polygon>
+          </svg>
+        </div>
+        <h1 id="authTitle" class="auth-title">VÉU RPG</h1>
+        <p class="auth-subtitle">Sistema de Fichas de Personagem</p>
+      </header>
+
+      <!-- Feedback / Alert Container -->
+      <div id="authAlert" class="alert" style="display: none;" role="alert"></div>
+
+      <!-- Segmented Navigation Tabs -->
+      <nav class="auth-tabs" role="tablist" aria-label="Opções de Acesso">
+        <button id="tabLogin" class="auth-tab-btn active" role="tab" aria-selected="true" aria-controls="panelLogin" type="button">
+          Entrar
+        </button>
+        <button id="tabRegister" class="auth-tab-btn" role="tab" aria-selected="false" aria-controls="panelRegister" type="button">
+          Cadastrar
+        </button>
+        <button id="tabForgot" class="auth-tab-btn" role="tab" aria-selected="false" aria-controls="panelForgot" type="button">
+          Recuperar
+        </button>
+      </nav>
+
+      <!-- TAB 1: LOGIN -->
+      <div id="panelLogin" class="auth-form-panel active" role="tabpanel" aria-labelledby="tabLogin">
+        <form id="formLogin" novalidate>
+          <div class="form-group">
+            <label for="loginEmail" class="form-label">E-mail</label>
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+              </span>
+              <input type="email" id="loginEmail" class="form-input" placeholder="seu@email.com" required autocomplete="email">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="loginPassword" class="form-label">Senha</label>
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              </span>
+              <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+              <button type="button" class="password-toggle-btn" data-target="loginPassword" aria-label="Mostrar ou ocultar senha">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-footer-actions">
+            <button type="button" id="linkToForgot" class="link-btn">Esqueceu a senha?</button>
+          </div>
+
+          <button type="submit" id="btnLoginSubmit" class="btn btn-primary auth-submit-btn">
+            <span class="btn-text">Entrar no Véu</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- TAB 2: CADASTRO -->
+      <div id="panelRegister" class="auth-form-panel" role="tabpanel" aria-labelledby="tabRegister">
+        <form id="formRegister" novalidate>
+          <div class="form-group">
+            <label for="registerName" class="form-label">Nome de Jogador</label>
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </span>
+              <input type="text" id="registerName" class="form-input" placeholder="Ex: Elminster de Shadowdale" required autocomplete="name">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="registerEmail" class="form-label">E-mail</label>
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+              </span>
+              <input type="email" id="registerEmail" class="form-input" placeholder="seu@email.com" required autocomplete="email">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="registerPassword" class="form-label">Senha (mínimo 6 caracteres)</label>
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              </span>
+              <input type="password" id="registerPassword" class="form-input" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+              <button type="button" class="password-toggle-btn" data-target="registerPassword" aria-label="Mostrar ou ocultar senha">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="registerPasswordConfirm" class="form-label">Confirmar Senha</label>
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              </span>
+              <input type="password" id="registerPasswordConfirm" class="form-input" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+            </div>
+          </div>
+
+          <button type="submit" id="btnRegisterSubmit" class="btn btn-primary auth-submit-btn">
+            <span class="btn-text">Criar Nova Conta</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- TAB 3: RECUPERAR SENHA -->
+      <div id="panelForgot" class="auth-form-panel" role="tabpanel" aria-labelledby="tabForgot">
+        <form id="formForgot" novalidate>
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px;">
+            Digite seu e-mail cadastrado. Enviaremos um link seguro para você redefinir sua senha de acesso.
+          </p>
+
+          <div class="form-group">
+            <label for="forgotEmail" class="form-label">E-mail de Cadastro</label>
+            <div class="input-wrapper">
+              <span class="input-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+              </span>
+              <input type="email" id="forgotEmail" class="form-input" placeholder="seu@email.com" required autocomplete="email">
+            </div>
+          </div>
+
+          <button type="submit" id="btnForgotSubmit" class="btn btn-primary auth-submit-btn">
+            <span class="btn-text">Enviar Link de Recuperação</span>
+          </button>
+
+          <div class="auth-back-row">
+            <button type="button" id="btnBackToLogin" class="auth-back-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+              Voltar ao Login
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <footer class="auth-footer-lore">
+        <p>&copy; Véu RPG &bull; Forjado para Mestres e Jogadores</p>
+      </footer>
+    </section>
+  </main>
+
+  <!-- Main Auth ES Module -->
+  <script type="module" src="assets/js/auth.js"></script>
+</body>
+</html>
