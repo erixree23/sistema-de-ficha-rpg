@@ -3148,9 +3148,9 @@ main.dashboard-content,
   --sheet-accent: #3b82f6;
   --sheet-accent-glow: rgba(59, 130, 246, 0.45);
   --sheet-accent-subtle: rgba(59, 130, 246, 0.15);
-  --boreal-border: rgba(255, 255, 255, 0.12);
-  --boreal-card-bg: rgba(18, 22, 34, 0.65);
-  --boreal-banner-bg: rgba(255, 255, 255, 0.08);
+  --boreal-border: rgba(255, 255, 255, 0.1);
+  --boreal-card-bg: rgba(12, 14, 18, 0.85);
+  --boreal-banner-bg: rgba(255, 255, 255, 0.05);
 
   position: relative;
   width: 100%;
@@ -3170,37 +3170,38 @@ main.dashboard-content,
   --boreal-banner-bg: rgba(0, 0, 0, 0.06);
 }
 
-/* Botão Flutuante Lateral para abrir o Espírito */
+/* Botão Flutuante Lateral para abrir o Espírito (FAB Circular com Ícone Fantasma) */
 .boreal-drawer-toggle-btn {
   position: fixed;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 100;
+  right: 16px;
+  bottom: 76px;
+  z-index: 110;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
   background: var(--sheet-accent);
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-right: none;
-  padding: 10px 14px 10px 12px;
-  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-  box-shadow: -4px 6px 20px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), 0 0 12px var(--sheet-accent-glow);
   cursor: pointer;
-  font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 1.3rem;
   transition: all var(--transition-fast);
 }
 
 .boreal-drawer-toggle-btn:hover {
-  filter: brightness(1.15);
-  padding-right: 18px;
-  box-shadow: -6px 8px 25px var(--sheet-accent-glow);
+  filter: brightness(1.18);
+  transform: scale(1.08);
+  box-shadow: 0 6px 22px var(--sheet-accent-glow);
 }
 
 /* Cabeçalho Boreal */
 .boreal-sheet-header {
+  position: relative;
+  z-index: 100;
+  overflow: visible !important;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3326,6 +3327,11 @@ main.dashboard-content,
   transition: all var(--transition-fast);
 }
 
+.boreal-settings-dropdown-wrapper {
+  position: relative;
+  z-index: 105;
+}
+
 .boreal-gear-btn:hover {
   transform: rotate(45deg);
   border-color: var(--sheet-accent);
@@ -3334,19 +3340,19 @@ main.dashboard-content,
 .boreal-settings-menu {
   position: absolute;
   right: 0;
-  top: 42px;
-  background: var(--card-bg);
+  top: 44px;
+  background: rgba(12, 14, 20, 0.96) !important;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--boreal-border);
   border-radius: var(--radius-md);
-  padding: 12px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  box-shadow: var(--shadow-lg);
-  z-index: 50;
-  min-width: 200px;
+  gap: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.85);
+  z-index: 1000 !important;
+  min-width: 220px;
 }
 
 .boreal-settings-item {
@@ -4132,26 +4138,38 @@ main.dashboard-content,
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   }
 
-  .boreal-pill-tab {
+  .boreal-pill-tab,
+  .ed-pill-tab {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 5px;
+    justify-content: center;
+    gap: 2px;
     background: transparent;
     border: none;
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-md);
     padding: 6px 10px;
     color: var(--text-muted);
-    font-size: 0.74rem;
+    font-size: 0.68rem;
     font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
     transition: all var(--transition-fast);
   }
 
-  .boreal-pill-tab.active {
+  .boreal-pill-tab svg,
+  .ed-pill-tab svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2;
+    flex-shrink: 0;
+  }
+
+  .boreal-pill-tab.active,
+  .ed-pill-tab.active {
     background: var(--sheet-accent);
     color: #ffffff;
-    box-shadow: 0 0 10px var(--sheet-accent-glow);
+    box-shadow: 0 0 12px var(--sheet-accent-glow);
   }
 }
 
@@ -4159,18 +4177,13 @@ main.dashboard-content,
   .boreal-mobile-column-pill,
   .ed-mobile-column-pill {
     padding: 4px 6px;
-    gap: 4px;
+    gap: 2px;
   }
 
   .boreal-pill-tab,
   .ed-pill-tab {
     padding: 5px 8px;
-    font-size: 0.72rem;
-  }
-
-  .boreal-pill-tab:not(.active) .pill-title,
-  .ed-pill-tab:not(.active) .pill-title {
-    display: none;
+    font-size: 0.65rem;
   }
 }
 
@@ -4184,20 +4197,25 @@ main.dashboard-content,
   width: 100%;
   max-width: 580px;
   height: 100vh;
-  background: var(--card-bg);
+  background: rgba(10, 12, 16, 0.95);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-left: 1px solid var(--boreal-border);
-  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.6);
+  box-shadow: none;
   z-index: 150;
   display: flex;
   flex-direction: column;
-  transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.4s;
   overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .boreal-spirit-drawer.open {
   right: 0;
+  visibility: visible;
+  pointer-events: auto;
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.6);
 }
 
 .boreal-drawer-header {
@@ -4403,6 +4421,98 @@ main.dashboard-content,
   }
 }
 
+/* --------------------------------------------------------------------------
+   ESTILOS ADICIONAIS: EQUIPAR ITENS, HUD ESCUDO DO MESTRE & NPCS
+   -------------------------------------------------------------------------- */
+.btn-equip-slot {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--boreal-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 4px 6px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
 
+.btn-equip-slot:hover {
+  background: var(--sheet-accent, var(--accent-primary));
+  color: #ffffff;
+  border-color: var(--sheet-accent, var(--accent-primary));
+  box-shadow: 0 2px 8px var(--accent-primary-glow);
+}
 
+.res-bar-container {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
 
+.res-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%);
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+.gm-vital-avatar {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+}
+
+.npc-skill-pill {
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  transition: all var(--transition-fast);
+}
+
+.npc-skill-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-main);
+}
+
+.npc-skill-pill.selected {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #ffffff;
+  box-shadow: 0 2px 8px var(--accent-primary-glow);
+}
+
+.npc-active-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--accent-primary);
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.npc-active-badge .btn-remove-skill-tag {
+  cursor: pointer;
+  font-weight: 800;
+  opacity: 0.8;
+  margin-left: 2px;
+  transition: opacity 0.2s;
+}
+
+.npc-active-badge .btn-remove-skill-tag:hover {
+  opacity: 1;
+}

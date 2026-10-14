@@ -1760,6 +1760,30 @@ if (btnBackToCampaignFromSheet) {
 // ==========================================================================
 // 6. ABA 2: JOGADORES (PLAYERS)
 // ==========================================================================
+const userProfileCache = new Map();
+
+async function getPlayerPhoto(uid) {
+  if (!uid) return null;
+  if (userProfileCache.has(uid)) return userProfileCache.get(uid);
+  const localPhoto = localStorage.getItem(`veu_avatar_${uid}`);
+  if (localPhoto) {
+    userProfileCache.set(uid, localPhoto);
+    return localPhoto;
+  }
+  try {
+    const snap = await getDoc(doc(db, "users", uid));
+    if (snap.exists() && snap.data().photoURL) {
+      const pUrl = snap.data().photoURL;
+      localStorage.setItem(`veu_avatar_${uid}`, pUrl);
+      userProfileCache.set(uid, pUrl);
+      return pUrl;
+    }
+  } catch (e) {
+    console.warn("Erro ao buscar foto do player:", e);
+  }
+  return null;
+}
+
 function listenPlayers() {
   if (!campPlayersList || !activeCampaign) return;
   campPlayersList.innerHTML = "";
@@ -1768,14 +1792,17 @@ function listenPlayers() {
 
   players.forEach((p) => {
     const isThisMaster = p.uid === activeCampaign.masterId;
-    const isSelf = p.uid === currentAuthUser.uid;
+    const isSelf = p.uid === currentAuthUser?.uid;
     const item = document.createElement("div");
     item.className = "player-item";
 
+    const initial = (p.name || "A").charAt(0).toUpperCase();
+    const directPhoto = p.photoURL || p.avatarUrl || localStorage.getItem(`veu_avatar_${p.uid}`);
+
     item.innerHTML = `
       <div style="display: flex; align-items: center; gap: 12px;">
-        <div class="user-avatar" style="width: 36px; height: 36px; font-size: 0.9rem; overflow: hidden;">
-          ${(p.name || "A").charAt(0).toUpperCase()}
+        <div class="user-avatar player-avatar-box" data-uid="${p.uid}" style="width: 38px; height: 38px; min-width: 38px; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.08); border: 1.5px solid var(--glass-border); font-size: 0.95rem; font-weight: 700;">
+          ${directPhoto ? `<img src="${escapeHtml(directPhoto)}" alt="${escapeHtml(p.name)}" style="width: 100%; height: 100%; object-fit: cover;">` : initial}
         </div>
         <div>
           <div style="font-weight: 600; font-size: 0.92rem;">${escapeHtml(p.name)} ${isSelf ? '<span style="font-size: 0.72rem; color: var(--accent-primary);">(Você)</span>' : ""}</div>
@@ -1794,6 +1821,17 @@ function listenPlayers() {
         ` : ""}
       </div>
     `;
+
+    if (!directPhoto) {
+      getPlayerPhoto(p.uid).then((photo) => {
+        if (photo) {
+          const box = item.querySelector(`.player-avatar-box[data-uid="${p.uid}"]`);
+          if (box) {
+            box.innerHTML = `<img src="${photo}" alt="${escapeHtml(p.name)}" style="width: 100%; height: 100%; object-fit: cover;">`;
+          }
+        }
+      });
+    }
 
     const btnRemove = item.querySelector(".btn-remove-player");
     if (btnRemove) {
@@ -1859,41 +1897,91 @@ function renderGmVitalsHud() {
   campaignSheetsCache.forEach((sheet) => {
     const card = document.createElement("div");
     card.className = "gm-vital-card";
-    const hpPercent = sheet.maxHp > 0 ? Math.max(0, Math.min(100, Math.round((sheet.currentHp / sheet.maxHp) * 100))) : 100;
+
+    const isBoreal = sheet.system === "Boreal RPG" || activeCampaign?.system === "Boreal RPG";
+    const hpMax = sheet.hpMax ?? sheet.maxHp ?? 10;
+    const hpCur = sheet.hpCurrent ?? sheet.currentHp ?? hpMax;
+    const hpPercent = hpMax > 0 ? Math.max(0, Math.min(100, Math.round((hpCur / hpMax) * 100))) : 100;
+
+    const resMax = sheet.resMax ?? 10;
+    const resCur = sheet.resCurrent ?? resMax;
+    const resPercent = resMax > 0 ? Math.max(0, Math.min(100, Math.round((resCur / resMax) * 100))) : 100;
+
+    const charName = sheet.name || "Personagem";
+    const avatarUrl = sheet.avatarUrl || "";
+    let avatarHtml = `<div class="user-avatar" style="width: 36px; height: 36px; min-width: 36px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; border: 1px solid var(--glass-border);">${escapeHtml(charName.charAt(0).toUpperCase())}</div>`;
+    if (avatarUrl) {
+      avatarHtml = `<img src="${escapeHtml(avatarUrl)}" class="gm-vital-avatar" alt="${escapeHtml(charName)}" onerror="this.style.display='none'">`;
+    }
+
+    // Badge de Defesa / DTs
+    let defenseBadge = `<span class="badge-tag badge-system" style="font-size: 0.72rem;">CA ${sheet.ac || sheet.defense || 10}</span>`;
+    if (isBoreal) {
+      const corpo = sheet.attributes?.corpo || 0;
+      const poder = sheet.attributes?.poder || 0;
+      const mente = sheet.attributes?.mente || 0;
+      const fort = sheet.skills?.Fortitude || 0;
+      const mist = sheet.skills?.Mística || 0;
+      const vont = sheet.skills?.Vontade || 0;
+      const dtF = 6 + corpo + fort;
+      const dtM = 6 + poder + mist;
+      const dtMen = 6 + mente + vont;
+      defenseBadge = `<span class="badge-tag badge-system" style="font-size: 0.68rem;" title="DT Físico / Mágico / Mental">DT ${dtF}/${dtM}/${dtMen}</span>`;
+    }
 
     card.innerHTML = `
       <div class="gm-vital-card-header" style="cursor: pointer;" title="Clique para abrir ficha completa">
-        <div>
-          <strong style="font-size: 0.95rem;">${escapeHtml(sheet.name)}</strong>
-          <div style="font-size: 0.76rem; color: var(--text-muted);">${escapeHtml(sheet.ownerName || "Sem jogador")}</div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          ${avatarHtml}
+          <div>
+            <strong style="font-size: 0.95rem;">${escapeHtml(charName)}</strong>
+            <div style="font-size: 0.74rem; color: var(--text-muted);">${escapeHtml(sheet.class || sheet.characterClass || sheet.ownerName || "Sem jogador")}</div>
+          </div>
         </div>
         <div style="display: flex; align-items: center; gap: 6px;">
-          <span class="badge-tag badge-system" style="font-size: 0.72rem;">CA ${sheet.ac || 10}</span>
+          ${defenseBadge}
           <button type="button" class="btn btn-ghost btn-view-sheet-hud" style="padding: 2px 6px; font-size: 0.75rem;" title="Abrir ficha completa">
             👁️
           </button>
         </div>
       </div>
 
+      <!-- Barra de Vida -->
       <div>
         <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 4px;">
-          <span>Vida (HP)</span>
-          <strong class="vital-hp">${sheet.currentHp}/${sheet.maxHp}</strong>
+          <span>❤️ Vida (HP)</span>
+          <strong class="vital-hp">${hpCur}/${hpMax}</strong>
         </div>
         <div class="hp-bar-container">
           <div class="hp-bar-fill" style="width: ${hpPercent}%;"></div>
         </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+          <div class="gm-hp-controls">
+            <button type="button" class="btn-vital-step btn-hp-minus" data-id="${sheet.id}" title="-1 HP">-1</button>
+            <button type="button" class="btn-vital-step btn-hp-plus" data-id="${sheet.id}" title="+1 HP">+1</button>
+          </div>
+          <button type="button" class="btn btn-ghost btn-add-to-init" style="padding: 2px 8px; font-size: 0.72rem;" title="Adicionar ao combate">
+            + Iniciativa
+          </button>
+        </div>
       </div>
 
-      <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
-        <div class="gm-hp-controls">
-          <button type="button" class="btn-vital-step btn-hp-minus" data-id="${sheet.id}" title="-1 HP">-1</button>
-          <button type="button" class="btn-vital-step btn-hp-plus" data-id="${sheet.id}" title="+1 HP">+1</button>
+      ${isBoreal ? `
+      <!-- Barra de Resiliência (Boreal RPG) -->
+      <div style="border-top: 1px dashed var(--glass-border); padding-top: 6px;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 4px;">
+          <span style="color: #60a5fa;">🧠 Resiliência</span>
+          <strong style="color: #60a5fa;">${resCur}/${resMax}</strong>
         </div>
-        <button type="button" class="btn btn-ghost btn-add-to-init" style="padding: 4px 8px; font-size: 0.75rem;" title="Adicionar ao combate">
-          + Iniciativa
-        </button>
+        <div class="res-bar-container">
+          <div class="res-bar-fill" style="width: ${resPercent}%;"></div>
+        </div>
+        <div class="gm-hp-controls" style="margin-top: 4px;">
+          <button type="button" class="btn-vital-step btn-res-minus" data-id="${sheet.id}" title="-1 Res">-1</button>
+          <button type="button" class="btn-vital-step btn-res-plus" data-id="${sheet.id}" title="+1 Res">+1</button>
+        </div>
       </div>
+      ` : ""}
     `;
 
     const hudHeader = card.querySelector(".gm-vital-card-header");
@@ -1910,12 +1998,16 @@ function renderGmVitalsHud() {
 
     card.querySelector(".btn-hp-minus").addEventListener("click", () => adjustSheetHp(sheet, -1));
     card.querySelector(".btn-hp-plus").addEventListener("click", () => adjustSheetHp(sheet, 1));
+    if (isBoreal) {
+      card.querySelector(".btn-res-minus")?.addEventListener("click", () => adjustSheetRes(sheet, -1));
+      card.querySelector(".btn-res-plus")?.addEventListener("click", () => adjustSheetRes(sheet, 1));
+    }
     card.querySelector(".btn-add-to-init").addEventListener("click", () => {
       addCombatantToInitiative({
         name: sheet.name,
         type: "player",
-        currentHp: sheet.currentHp,
-        maxHp: sheet.maxHp
+        currentHp: hpCur,
+        maxHp: hpMax
       });
     });
 
@@ -1924,9 +2016,16 @@ function renderGmVitalsHud() {
 }
 
 async function adjustSheetHp(sheet, delta) {
-  const newHp = Math.max(0, Math.min(sheet.maxHp, (sheet.currentHp || 0) + delta));
+  const hpMax = sheet.hpMax ?? sheet.maxHp ?? 10;
+  const hpCur = sheet.hpCurrent ?? sheet.currentHp ?? hpMax;
+  const newHp = Math.max(0, Math.min(hpMax, hpCur + delta));
   try {
+    sheet.hpCurrent = newHp;
+    sheet.currentHp = newHp;
+    renderGmVitalsHud();
+
     await updateDoc(doc(db, "campaigns", activeCampaign.id, "sheets", sheet.id), {
+      hpCurrent: newHp,
       currentHp: newHp
     });
   } catch (err) {
@@ -1934,7 +2033,51 @@ async function adjustSheetHp(sheet, delta) {
   }
 }
 
-// NPCs e Inimigos Rápidos
+async function adjustSheetRes(sheet, delta) {
+  const resMax = sheet.resMax ?? 10;
+  const resCur = sheet.resCurrent ?? resMax;
+  const newRes = Math.max(0, Math.min(resMax, resCur + delta));
+  try {
+    sheet.resCurrent = newRes;
+    renderGmVitalsHud();
+
+    await updateDoc(doc(db, "campaigns", activeCampaign.id, "sheets", sheet.id), {
+      resCurrent: newRes
+    });
+  } catch (err) {
+    console.warn("Erro ao ajustar Resiliência:", err);
+  }
+}
+
+// ==========================================================================
+// NPCS E MONSTROS (COM VITALS, RESILIÊNCIA, DEFESAS, ATRIBUTOS E PERÍCIAS)
+// ==========================================================================
+const BOREAL_SKILLS_LIST = [
+  "Atletismo", "Fortitude", "Luta", "Furtividade", "Ladinagem", "Pontaria",
+  "Mística", "Ocultismo", "Canalização", "Percepção", "Intuição", "Investigação",
+  "Adestramento", "Medicina", "Sobrevivência", "Diplomacia", "Enganação", "Intimidação", "Vontade"
+];
+
+let currentViewingNpcForSkills = null;
+
+function populateNpcSkillsPicker(selectedSkills = []) {
+  const container = document.getElementById("npcSkillsPickerGrid");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const selectedSet = new Set(selectedSkills);
+  BOREAL_SKILLS_LIST.forEach((sk) => {
+    const pill = document.createElement("div");
+    pill.className = `npc-skill-pill ${selectedSet.has(sk) ? "selected" : ""}`;
+    pill.textContent = sk;
+    pill.dataset.skill = sk;
+    pill.addEventListener("click", () => {
+      pill.classList.toggle("selected");
+    });
+    container.appendChild(pill);
+  });
+}
+
 function listenNpcs(campaignId) {
   const q = query(
     collection(db, "campaigns", campaignId, "npcs"),
@@ -1961,51 +2104,113 @@ function renderNpcs() {
   campaignNpcsCache.forEach((npc) => {
     const card = document.createElement("div");
     card.className = "gm-vital-card";
-    const hpPercent = npc.maxHp > 0 ? Math.max(0, Math.min(100, Math.round((npc.currentHp / npc.maxHp) * 100))) : 100;
+
+    const hpMax = npc.maxHp || 15;
+    const hpCur = npc.currentHp !== undefined ? npc.currentHp : hpMax;
+    const hpPercent = hpMax > 0 ? Math.max(0, Math.min(100, Math.round((hpCur / hpMax) * 100))) : 100;
+
+    const resMax = npc.maxRes !== undefined ? npc.maxRes : 10;
+    const resCur = npc.currentRes !== undefined ? npc.currentRes : resMax;
+    const resPercent = resMax > 0 ? Math.max(0, Math.min(100, Math.round((resCur / resMax) * 100))) : 100;
+
+    const defPadrao = npc.defPadrao !== undefined ? npc.defPadrao : (npc.ac || 10);
+    const defMagica = npc.defMagica !== undefined ? npc.defMagica : 10;
+
+    const skillsCount = Array.isArray(npc.skills) ? npc.skills.length : 0;
+    const avatarUrl = npc.avatarUrl || "";
+    let avatarHtml = `<div class="user-avatar" style="width: 36px; height: 36px; min-width: 36px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; border: 1px solid var(--glass-border);">👾</div>`;
+    if (avatarUrl) {
+      avatarHtml = `<img src="${escapeHtml(avatarUrl)}" class="gm-vital-avatar" alt="${escapeHtml(npc.name)}" onerror="this.style.display='none'">`;
+    }
 
     card.innerHTML = `
       <div class="gm-vital-card-header">
-        <div>
-          <strong style="font-size: 0.95rem;">${escapeHtml(npc.name)}</strong>
-          <div style="font-size: 0.74rem; color: var(--text-muted);">${escapeHtml(npc.npcType || "Inimigo")}</div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          ${avatarHtml}
+          <div>
+            <strong style="font-size: 0.95rem;">${escapeHtml(npc.name)}</strong>
+            <div style="font-size: 0.74rem; color: var(--text-muted);">${escapeHtml(npc.npcType || "Inimigo")}</div>
+          </div>
         </div>
-        <span class="badge-tag badge-master" style="font-size: 0.72rem;">CA ${npc.ac || 10}</span>
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <button type="button" class="btn btn-ghost btn-xs btn-npc-edit" title="Editar NPC" style="padding: 2px 6px;">✏️</button>
+          <button type="button" class="btn btn-ghost btn-xs btn-npc-del" title="Excluir NPC" style="padding: 2px 6px; color: var(--color-error);">✕</button>
+        </div>
       </div>
 
+      <!-- Barra de Vida -->
       <div>
         <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 4px;">
-          <span>Vida</span>
-          <strong class="vital-hp">${npc.currentHp}/${npc.maxHp}</strong>
+          <span>❤️ Vida</span>
+          <strong class="vital-hp">${hpCur}/${hpMax}</strong>
         </div>
         <div class="hp-bar-container">
           <div class="hp-bar-fill" style="width: ${hpPercent}%;"></div>
         </div>
       </div>
 
-      ${npc.notes ? `<p style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">${escapeHtml(npc.notes)}</p>` : ""}
+      <!-- Barra de Resiliência -->
+      <div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 4px;">
+          <span style="color: #60a5fa;">🧠 Resiliência</span>
+          <strong style="color: #60a5fa;">${resCur}/${resMax}</strong>
+        </div>
+        <div class="res-bar-container">
+          <div class="res-bar-fill" style="width: ${resPercent}%;"></div>
+        </div>
+      </div>
 
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div class="gm-hp-controls">
-          <button type="button" class="btn-vital-step btn-npc-hp-minus">-1</button>
-          <button type="button" class="btn-vital-step btn-npc-hp-plus">+1</button>
+      <!-- Defesas e Atributos -->
+      <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.03); padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); font-size: 0.75rem;">
+        <div style="display: flex; gap: 8px;">
+          <span title="Defesa Padrão">🛡️ <strong>${defPadrao}</strong></span>
+          <span title="Defesa Mágica">🔮 <strong>${defMagica}</strong></span>
+        </div>
+        <div style="color: var(--text-muted); font-size: 0.72rem;">
+          COR <strong>${npc.attrCorpo ?? 0}</strong> | POD <strong>${npc.attrPoder ?? 0}</strong> | MEN <strong>${npc.attrMente ?? 0}</strong>
+        </div>
+      </div>
+
+      ${npc.notes ? `<p style="font-size: 0.78rem; color: var(--text-muted); font-style: italic; margin: 0;">${escapeHtml(npc.notes)}</p>` : ""}
+
+      <!-- Controles de HP/Res e Ações -->
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; border-top: 1px dashed var(--glass-border); padding-top: 6px;">
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <div class="gm-hp-controls" title="Ajustar Vida">
+            <span style="font-size: 0.72rem; color: var(--text-muted);">HP:</span>
+            <button type="button" class="btn-vital-step btn-npc-hp-minus">-1</button>
+            <button type="button" class="btn-vital-step btn-npc-hp-plus">+1</button>
+          </div>
+          <div class="gm-hp-controls" title="Ajustar Resiliência">
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Res:</span>
+            <button type="button" class="btn-vital-step btn-npc-res-minus">-1</button>
+            <button type="button" class="btn-vital-step btn-npc-res-plus">+1</button>
+          </div>
         </div>
         <div style="display: flex; gap: 4px;">
-          <button type="button" class="btn btn-ghost btn-npc-init" style="padding: 4px 8px; font-size: 0.75rem;">+ Combate</button>
-          <button type="button" class="btn btn-ghost btn-npc-del" style="padding: 4px 8px; font-size: 0.75rem; color: var(--color-error);">&times;</button>
+          <button type="button" class="btn btn-ghost btn-xs btn-npc-skills" style="padding: 3px 6px; font-size: 0.72rem;">📜 Perícias (${skillsCount})</button>
+          <button type="button" class="btn btn-ghost btn-xs btn-npc-init" style="padding: 3px 6px; font-size: 0.72rem;">+ Combate</button>
         </div>
       </div>
     `;
 
     card.querySelector(".btn-npc-hp-minus").addEventListener("click", () => adjustNpcHp(npc, -1));
     card.querySelector(".btn-npc-hp-plus").addEventListener("click", () => adjustNpcHp(npc, 1));
+    card.querySelector(".btn-npc-res-minus").addEventListener("click", () => adjustNpcRes(npc, -1));
+    card.querySelector(".btn-npc-res-plus").addEventListener("click", () => adjustNpcRes(npc, 1));
+
+    card.querySelector(".btn-npc-skills").addEventListener("click", () => openNpcSkillsView(npc));
+    card.querySelector(".btn-npc-edit").addEventListener("click", () => openEditNpcModal(npc));
+
     card.querySelector(".btn-npc-init").addEventListener("click", () => {
       addCombatantToInitiative({
         name: npc.name,
         type: "npc",
-        currentHp: npc.currentHp,
-        maxHp: npc.maxHp
+        currentHp: hpCur,
+        maxHp: hpMax
       });
     });
+
     card.querySelector(".btn-npc-del").addEventListener("click", async () => {
       if (confirm(`Excluir NPC "${npc.name}"?`)) {
         await deleteDoc(doc(db, "campaigns", activeCampaign.id, "npcs", npc.id));
@@ -2017,7 +2222,11 @@ function renderNpcs() {
 }
 
 async function adjustNpcHp(npc, delta) {
-  const newHp = Math.max(0, Math.min(npc.maxHp, (npc.currentHp || 0) + delta));
+  const hpMax = npc.maxHp || 15;
+  const hpCur = npc.currentHp !== undefined ? npc.currentHp : hpMax;
+  const newHp = Math.max(0, Math.min(hpMax, hpCur + delta));
+  npc.currentHp = newHp;
+  renderNpcs();
   try {
     await updateDoc(doc(db, "campaigns", activeCampaign.id, "npcs", npc.id), {
       currentHp: newHp
@@ -2027,9 +2236,158 @@ async function adjustNpcHp(npc, delta) {
   }
 }
 
-// Modal Criar NPC
+async function adjustNpcRes(npc, delta) {
+  const resMax = npc.maxRes !== undefined ? npc.maxRes : 10;
+  const resCur = npc.currentRes !== undefined ? npc.currentRes : resMax;
+  const newRes = Math.max(0, Math.min(resMax, resCur + delta));
+  npc.currentRes = newRes;
+  renderNpcs();
+  try {
+    await updateDoc(doc(db, "campaigns", activeCampaign.id, "npcs", npc.id), {
+      currentRes: newRes
+    });
+  } catch (err) {
+    console.warn("Erro ao ajustar Resiliência do NPC:", err);
+  }
+}
+
+// Modal Ver / Gerenciar Perícias do NPC
+function openNpcSkillsView(npc) {
+  currentViewingNpcForSkills = npc;
+  const title = document.getElementById("npcSkillsModalTitle");
+  if (title) title.textContent = `Perícias de ${npc.name}`;
+
+  renderNpcActiveSkillsList();
+  populateAddSkillDropdown();
+  openModalById("modalNpcSkillsView");
+}
+
+function renderNpcActiveSkillsList() {
+  const list = document.getElementById("npcActiveSkillsList");
+  if (!list || !currentViewingNpcForSkills) return;
+  list.innerHTML = "";
+
+  const skills = Array.isArray(currentViewingNpcForSkills.skills) ? currentViewingNpcForSkills.skills : [];
+  if (skills.length === 0) {
+    list.innerHTML = `<span style="font-size: 0.78rem; color: var(--text-muted); font-style: italic;">Nenhuma perícia cadastrada neste NPC.</span>`;
+    return;
+  }
+
+  skills.forEach((sk) => {
+    const badge = document.createElement("span");
+    badge.className = "npc-active-badge";
+    badge.innerHTML = `
+      <span>${escapeHtml(sk)}</span>
+      <span class="btn-remove-skill-tag" title="Remover perícia">&times;</span>
+    `;
+    badge.querySelector(".btn-remove-skill-tag").addEventListener("click", async () => {
+      currentViewingNpcForSkills.skills = currentViewingNpcForSkills.skills.filter((s) => s !== sk);
+      renderNpcActiveSkillsList();
+      populateAddSkillDropdown();
+      renderNpcs();
+      try {
+        await updateDoc(doc(db, "campaigns", activeCampaign.id, "npcs", currentViewingNpcForSkills.id), {
+          skills: currentViewingNpcForSkills.skills
+        });
+      } catch (err) {
+        console.error("Erro ao salvar remoção de perícia:", err);
+      }
+    });
+    list.appendChild(badge);
+  });
+}
+
+function populateAddSkillDropdown() {
+  const select = document.getElementById("selectAddNpcSkill");
+  if (!select || !currentViewingNpcForSkills) return;
+  select.innerHTML = `<option value="">Selecione uma perícia...</option>`;
+
+  const activeSkills = new Set(currentViewingNpcForSkills.skills || []);
+  BOREAL_SKILLS_LIST.forEach((sk) => {
+    if (!activeSkills.has(sk)) {
+      const opt = document.createElement("option");
+      opt.value = sk;
+      opt.textContent = sk;
+      select.appendChild(opt);
+    }
+  });
+}
+
+const btnAddNpcSkillDirect = document.getElementById("btnAddNpcSkillDirect");
+if (btnAddNpcSkillDirect) {
+  btnAddNpcSkillDirect.addEventListener("click", async () => {
+    if (!currentViewingNpcForSkills) return;
+    const select = document.getElementById("selectAddNpcSkill");
+    const chosen = select ? select.value : "";
+    if (!chosen) return;
+
+    currentViewingNpcForSkills.skills = currentViewingNpcForSkills.skills || [];
+    if (!currentViewingNpcForSkills.skills.includes(chosen)) {
+      currentViewingNpcForSkills.skills.push(chosen);
+    }
+
+    renderNpcActiveSkillsList();
+    populateAddSkillDropdown();
+    renderNpcs();
+
+    try {
+      await updateDoc(doc(db, "campaigns", activeCampaign.id, "npcs", currentViewingNpcForSkills.id), {
+        skills: currentViewingNpcForSkills.skills
+      });
+      showToast(`Perícia "${chosen}" adicionada!`, "success");
+    } catch (err) {
+      console.error("Erro ao adicionar perícia ao NPC:", err);
+    }
+  });
+}
+
+// Modal Criar / Editar NPC
+function openCreateNpcModal() {
+  const form = document.getElementById("formCreateNPC");
+  if (form) form.reset();
+  setInputValue("npcEditId", "");
+  setInputValue("npcAvatarUrl", "");
+  const preview = document.getElementById("npcAvatarPreview");
+  if (preview) preview.innerHTML = "👾";
+  const title = document.getElementById("modalCreateNPCTitle");
+  if (title) title.textContent = "Novo NPC ou Monstro";
+
+  populateNpcSkillsPicker([]);
+  openModalById("modalCreateNPC");
+}
+
+function openEditNpcModal(npc) {
+  setInputValue("npcEditId", npc.id);
+  setInputValue("npcName", npc.name || "");
+  setInputValue("npcType", npc.npcType || "Inimigo");
+  setInputValue("npcMaxHp", npc.maxHp || 15);
+  setInputValue("npcMaxRes", npc.maxRes !== undefined ? npc.maxRes : 10);
+  setInputValue("npcDefPadrao", npc.defPadrao !== undefined ? npc.defPadrao : (npc.ac || 10));
+  setInputValue("npcDefMagica", npc.defMagica !== undefined ? npc.defMagica : 10);
+  setInputValue("npcAttrCorpo", npc.attrCorpo || 0);
+  setInputValue("npcAttrPoder", npc.attrPoder || 0);
+  setInputValue("npcAttrMente", npc.attrMente || 0);
+  setInputValue("npcNotes", npc.notes || "");
+  setInputValue("npcAvatarUrl", npc.avatarUrl || "");
+
+  const preview = document.getElementById("npcAvatarPreview");
+  if (preview) {
+    if (npc.avatarUrl) {
+      preview.innerHTML = `<img src="${escapeHtml(npc.avatarUrl)}" style="width: 100%; height: 100%; object-fit: cover;">`;
+    } else {
+      preview.innerHTML = "👾";
+    }
+  }
+
+  const title = document.getElementById("modalCreateNPCTitle");
+  if (title) title.textContent = `Editar ${npc.name}`;
+
+  populateNpcSkillsPicker(npc.skills || []);
+  openModalById("modalCreateNPC");
+}
+
 if (btnOpenCreateNPC) {
-  btnOpenCreateNPC.addEventListener("click", () => openModalById("modalCreateNPC"));
+  btnOpenCreateNPC.addEventListener("click", openCreateNpcModal);
 }
 
 if (formCreateNPC) {
@@ -2037,31 +2395,83 @@ if (formCreateNPC) {
     e.preventDefault();
     if (!activeCampaign) return;
 
-    const name = document.getElementById("npcName").value.trim();
-    const npcType = document.getElementById("npcType").value;
-    const maxHp = parseInt(document.getElementById("npcMaxHp").value, 10) || 10;
-    const ac = parseInt(document.getElementById("npcAc").value, 10) || 10;
-    const notes = document.getElementById("npcNotes").value.trim();
+    const editId = document.getElementById("npcEditId")?.value.trim();
+    const name = document.getElementById("npcName")?.value.trim();
+    const npcType = document.getElementById("npcType")?.value;
+    const maxHp = parseInt(document.getElementById("npcMaxHp")?.value, 10) || 15;
+    const maxRes = parseInt(document.getElementById("npcMaxRes")?.value, 10) || 10;
+    const defPadrao = parseInt(document.getElementById("npcDefPadrao")?.value, 10) || 10;
+    const defMagica = parseInt(document.getElementById("npcDefMagica")?.value, 10) || 10;
+    const attrCorpo = parseInt(document.getElementById("npcAttrCorpo")?.value, 10) || 0;
+    const attrPoder = parseInt(document.getElementById("npcAttrPoder")?.value, 10) || 0;
+    const attrMente = parseInt(document.getElementById("npcAttrMente")?.value, 10) || 0;
+    const notes = document.getElementById("npcNotes")?.value.trim() || "";
+    const avatarUrl = document.getElementById("npcAvatarUrl")?.value.trim() || "";
 
-    if (!name) return;
+    if (!name) {
+      showToast("Por favor, digite o nome do NPC.", "error");
+      return;
+    }
+
+    // Coleta perícias selecionadas
+    const selectedSkills = [];
+    document.querySelectorAll("#npcSkillsPickerGrid .npc-skill-pill.selected").forEach((p) => {
+      if (p.dataset.skill) selectedSkills.push(p.dataset.skill);
+    });
 
     try {
-      await addDoc(collection(db, "campaigns", activeCampaign.id, "npcs"), {
+      const btnSubmit = document.getElementById("btnSubmitNpcForm");
+      if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = "Salvando...";
+      }
+
+      const npcPayload = {
         name,
         npcType,
         maxHp,
-        currentHp: maxHp,
-        ac,
+        maxRes,
+        defPadrao,
+        ac: defPadrao,
+        defMagica,
+        attrCorpo,
+        attrPoder,
+        attrMente,
+        skills: selectedSkills,
         notes,
-        createdAt: serverTimestamp()
-      });
+        avatarUrl,
+        updatedAt: serverTimestamp()
+      };
+
+      if (editId) {
+        // Atualiza NPC existente mantendo HP/Res atuais dentro dos novos limites
+        const existing = campaignNpcsCache.find((n) => n.id === editId);
+        if (existing) {
+          npcPayload.currentHp = Math.min(existing.currentHp ?? maxHp, maxHp);
+          npcPayload.currentRes = Math.min(existing.currentRes ?? maxRes, maxRes);
+        }
+        await updateDoc(doc(db, "campaigns", activeCampaign.id, "npcs", editId), npcPayload);
+        showToast(`NPC "${name}" atualizado com sucesso!`, "success");
+      } else {
+        // Cria novo NPC
+        npcPayload.currentHp = maxHp;
+        npcPayload.currentRes = maxRes;
+        npcPayload.createdAt = serverTimestamp();
+        await addDoc(collection(db, "campaigns", activeCampaign.id, "npcs"), npcPayload);
+        showToast("NPC registrado no grimório!", "success");
+      }
 
       closeModalById("modalCreateNPC");
       formCreateNPC.reset();
-      showToast("NPC registrado no grimório!", "success");
     } catch (err) {
-      console.error("Erro ao criar NPC:", err);
-      showToast("Erro ao criar NPC.", "error");
+      console.error("Erro ao salvar NPC:", err);
+      showToast("Erro ao salvar NPC: " + err.message, "error");
+    } finally {
+      const btnSubmit = document.getElementById("btnSubmitNpcForm");
+      if (btnSubmit) {
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = "Salvar NPC";
+      }
     }
   });
 }
@@ -2712,6 +3122,7 @@ function openBorealSheetModal(sheet) {
   setInputValue("borealCharClass", currentViewingSheet.class || currentViewingSheet.characterClass || "Iniciado");
   setInputValue("borealSheetId", currentViewingSheet.id || "");
   setInputValue("borealCharLevel", currentViewingSheet.level || 1);
+  setInputValue("borealCharMoney", currentViewingSheet.money ?? 0);
 
   // Espírito no Topo
   const spiritSelect = document.getElementById("borealHeaderSpiritSelect");
@@ -3038,18 +3449,24 @@ function renderBorealPotions() {
   currentViewingSheet.potions.forEach((pot, idx) => {
     const card = document.createElement("div");
     card.className = "boreal-accordion-card";
+    const currentQty = pot.qty !== undefined ? pot.qty : 1;
+
     card.innerHTML = `
       <div class="boreal-acc-header">
-        <span class="boreal-acc-title">🧪 ${escapeHtml(pot.name || `Poção ${idx + 1}`)} (${pot.qty || 1})</span>
+        <span class="boreal-acc-title">🧪 ${escapeHtml(pot.name || `Poção ${idx + 1}`)} (${currentQty})</span>
         <div style="display: flex; gap: 6px; align-items: center;">
           <button type="button" class="btn btn-ghost btn-xs btn-pot-toggle">↕</button>
           <button type="button" class="btn btn-ghost btn-xs btn-pot-del" style="color: var(--color-error);">✕</button>
         </div>
       </div>
       <div class="boreal-acc-body">
-        <div style="display: flex; gap: 8px;">
+        <div style="display: flex; gap: 8px; align-items: center;">
           <input type="text" class="boreal-field-input boreal-pot-name-inp" value="${escapeHtml(pot.name || "")}" placeholder="Nome da Poção" style="flex: 2;">
-          <input type="number" class="boreal-field-input boreal-pot-qty-inp" value="${pot.qty || 1}" min="1" placeholder="Qtd" style="max-width: 60px;">
+          <div style="display: flex; align-items: center; gap: 2px;">
+            <button type="button" class="btn btn-ghost btn-xs btn-pot-qty-minus" style="padding: 2px 6px; font-weight: 800;">-</button>
+            <input type="number" class="boreal-field-input boreal-pot-qty-inp" value="${currentQty}" min="0" placeholder="0" style="max-width: 50px; text-align: center;">
+            <button type="button" class="btn btn-ghost btn-xs btn-pot-qty-plus" style="padding: 2px 6px; font-weight: 800;">+</button>
+          </div>
         </div>
         <input type="text" class="boreal-field-input boreal-pot-ingr-inp" value="${escapeHtml(pot.ingredientes || "")}" placeholder="Ingredientes">
         <input type="text" class="boreal-field-input boreal-pot-prep-inp" value="${escapeHtml(pot.preparo || "")}" placeholder="Preparo">
@@ -3066,16 +3483,33 @@ function renderBorealPotions() {
       triggerBorealAutoSave();
     });
 
+    const qtyInp = card.querySelector(".boreal-pot-qty-inp");
     card.querySelector(".boreal-pot-name-inp").addEventListener("input", (e) => {
       pot.name = e.target.value;
-      card.querySelector(".boreal-acc-title").textContent = `🧪 ${e.target.value || `Poção ${idx + 1}`} (${pot.qty || 1})`;
+      card.querySelector(".boreal-acc-title").textContent = `🧪 ${e.target.value || `Poção ${idx + 1}`} (${pot.qty !== undefined ? pot.qty : 0})`;
       triggerBorealAutoSave();
     });
-    card.querySelector(".boreal-pot-qty-inp").addEventListener("input", (e) => {
-      pot.qty = parseInt(e.target.value, 10) || 1;
+
+    qtyInp.addEventListener("input", (e) => {
+      pot.qty = Math.max(0, parseInt(e.target.value, 10) || 0);
       card.querySelector(".boreal-acc-title").textContent = `🧪 ${pot.name || `Poção ${idx + 1}`} (${pot.qty})`;
       triggerBorealAutoSave();
     });
+
+    card.querySelector(".btn-pot-qty-minus").addEventListener("click", () => {
+      pot.qty = Math.max(0, (pot.qty || 0) - 1);
+      qtyInp.value = pot.qty;
+      card.querySelector(".boreal-acc-title").textContent = `🧪 ${pot.name || `Poção ${idx + 1}`} (${pot.qty})`;
+      triggerBorealAutoSave();
+    });
+
+    card.querySelector(".btn-pot-qty-plus").addEventListener("click", () => {
+      pot.qty = (pot.qty || 0) + 1;
+      qtyInp.value = pot.qty;
+      card.querySelector(".boreal-acc-title").textContent = `🧪 ${pot.name || `Poção ${idx + 1}`} (${pot.qty})`;
+      triggerBorealAutoSave();
+    });
+
     card.querySelector(".boreal-pot-ingr-inp").addEventListener("input", (e) => { pot.ingredientes = e.target.value; triggerBorealAutoSave(); });
     card.querySelector(".boreal-pot-prep-inp").addEventListener("input", (e) => { pot.preparo = e.target.value; triggerBorealAutoSave(); });
     card.querySelector(".boreal-pot-efeito-inp").addEventListener("input", (e) => { pot.efeito = e.target.value; triggerBorealAutoSave(); });
@@ -3172,15 +3606,21 @@ document.querySelectorAll(".boreal-btn-unequip").forEach((btn) => {
     const slot = currentViewingSheet.equippedSlots?.[slotKey];
     if (!slot || !slot.name) return;
 
+    const protVal = parseInt(slot.prot, 10) || 0;
     currentViewingSheet.backpack = currentViewingSheet.backpack || [];
     currentViewingSheet.backpack.push({
       id: "bp_" + Date.now().toString(),
       name: slot.name,
-      prot: slot.prot || 0,
-      desc: "Desequipado do slot " + slotKey
+      prot: protVal,
+      efeito: slot.efeito || "",
+      desc: slot.desc || ""
     });
 
-    currentViewingSheet.equippedSlots[slotKey] = { name: "", prot: 0 };
+    if (protVal > 0) {
+      currentViewingSheet.protCurrent = Math.max(0, (currentViewingSheet.protCurrent || 0) - protVal);
+    }
+
+    currentViewingSheet.equippedSlots[slotKey] = { name: "", prot: 0, efeito: "", desc: "" };
     renderBorealEquippedSlots();
     renderBorealBackpack();
     recalcBorealVitalsAndDT();
@@ -3189,7 +3629,7 @@ document.querySelectorAll(".boreal-btn-unequip").forEach((btn) => {
   });
 });
 
-// Mochila / Inventário Boreal com Ação de Equipar
+// Mochila / Inventário Boreal com Acordeão e Ação de Equipar
 function renderBorealBackpack() {
   const list = document.getElementById("borealBackpackList");
   if (!list || !currentViewingSheet) return;
@@ -3198,57 +3638,117 @@ function renderBorealBackpack() {
   currentViewingSheet.backpack = currentViewingSheet.backpack || [];
   currentViewingSheet.backpack.forEach((item, idx) => {
     const card = document.createElement("div");
-    card.className = "boreal-backpack-item";
+    card.className = "boreal-accordion-card";
+    const protDisplay = item.prot !== undefined && item.prot !== 0 ? item.prot : "";
+
     card.innerHTML = `
-      <div style="display: flex; flex-direction: column; gap: 2px;">
-        <span style="font-weight: 700;">${escapeHtml(item.name)}</span>
-        <span style="font-size: 0.72rem; color: var(--text-muted);">${escapeHtml(item.desc || "")} ${item.prot ? `(+${item.prot} Prot)` : ""}</span>
+      <div class="boreal-acc-header" style="gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+          <span style="font-size: 0.95rem;">🎒</span>
+          <input type="text" class="boreal-field-input bp-name-input" value="${escapeHtml(item.name || "")}" placeholder="Nome do Item" style="flex: 1; padding: 4px 8px; font-size: 0.82rem; font-weight: 700;">
+          <div style="display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.05); border: 1px solid var(--boreal-border); border-radius: var(--radius-sm); padding: 2px 6px;">
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 700;">Prot:</span>
+            <input type="number" class="bp-prot-input" value="${protDisplay}" min="0" placeholder="0" style="width: 40px; background: transparent; border: none; color: var(--text-main); font-size: 0.82rem; font-weight: 800; text-align: center; outline: none;">
+          </div>
+        </div>
+        <div style="display: flex; gap: 4px; align-items: center;">
+          <button type="button" class="btn btn-ghost btn-xs btn-bp-toggle" title="Expandir/Recolher">↕</button>
+          <button type="button" class="btn btn-ghost btn-xs btn-bp-del" style="color: var(--color-error); padding: 2px 6px;" title="Excluir">✕</button>
+        </div>
       </div>
-      <div class="boreal-bp-actions">
-        <select class="boreal-field-input select-equip-dest" style="padding: 2px 4px; font-size: 0.72rem; max-width: 90px;">
-          <option value="">Equipar...</option>
-          <option value="cabeca">Cabeça</option>
-          <option value="mao">Mão</option>
-          <option value="corpo">Corpo</option>
-          <option value="pernas">Pernas</option>
-        </select>
-        <button type="button" class="btn btn-ghost btn-xs btn-del-bp-item" style="color: var(--color-error); padding: 2px 6px;">✕</button>
+      <div class="boreal-acc-body">
+        <input type="text" class="boreal-field-input bp-effect-input" value="${escapeHtml(item.efeito || "")}" placeholder="Efeito">
+        <textarea class="boreal-acc-textarea bp-desc-input" rows="2" placeholder="Descrição do item...">${escapeHtml(item.desc || "")}</textarea>
+        
+        <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--boreal-border);">
+          <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">🛡️ Equipar no Slot:</span>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+            <button type="button" class="btn-equip-slot" data-slot="cabeca">Cabeça</button>
+            <button type="button" class="btn-equip-slot" data-slot="mao">Mão</button>
+            <button type="button" class="btn-equip-slot" data-slot="corpo">Corpo</button>
+            <button type="button" class="btn-equip-slot" data-slot="pernas">Pernas</button>
+          </div>
+        </div>
       </div>
     `;
 
-    const select = card.querySelector(".select-equip-dest");
-    select.addEventListener("change", (e) => {
-      const dest = e.target.value;
-      if (!dest) return;
+    const body = card.querySelector(".boreal-acc-body");
+    card.querySelector(".btn-bp-toggle").addEventListener("click", () => body.classList.toggle("collapsed"));
 
-      currentViewingSheet.equippedSlots = currentViewingSheet.equippedSlots || {};
-      const oldEquipped = currentViewingSheet.equippedSlots[dest];
-      if (oldEquipped && oldEquipped.name) {
-        currentViewingSheet.backpack.push({
-          id: "bp_" + Date.now().toString(),
-          name: oldEquipped.name,
-          prot: oldEquipped.prot || 0,
-          desc: "Item substituído"
-        });
-      }
-
-      currentViewingSheet.equippedSlots[dest] = {
-        name: item.name,
-        prot: item.prot || 0
-      };
-
+    card.querySelector(".btn-bp-del").addEventListener("click", () => {
       currentViewingSheet.backpack.splice(idx, 1);
-      renderBorealEquippedSlots();
       renderBorealBackpack();
-      recalcBorealVitalsAndDT();
       triggerBorealAutoSave();
-      showToast(`"${item.name}" equipado em ${dest.toUpperCase()}!`, "success");
     });
 
-    card.querySelector(".btn-del-bp-item").addEventListener("click", () => {
-      currentViewingSheet.backpack.splice(idx, 1);
-      renderBorealBackpack();
+    const nameInp = card.querySelector(".bp-name-input");
+    nameInp.addEventListener("input", (e) => {
+      item.name = e.target.value;
       triggerBorealAutoSave();
+    });
+
+    const protInp = card.querySelector(".bp-prot-input");
+    protInp.addEventListener("input", (e) => {
+      item.prot = Math.max(0, parseInt(e.target.value, 10) || 0);
+      triggerBorealAutoSave();
+    });
+
+    const effectInp = card.querySelector(".bp-effect-input");
+    effectInp.addEventListener("input", (e) => {
+      item.efeito = e.target.value;
+      triggerBorealAutoSave();
+    });
+
+    const descInp = card.querySelector(".bp-desc-input");
+    descInp.addEventListener("input", (e) => {
+      item.desc = e.target.value;
+      triggerBorealAutoSave();
+    });
+
+    // Botões de Equipar nos 4 Slots
+    card.querySelectorAll(".btn-equip-slot").forEach((btnSlot) => {
+      btnSlot.addEventListener("click", () => {
+        const dest = btnSlot.dataset.slot;
+        if (!dest) return;
+
+        currentViewingSheet.equippedSlots = currentViewingSheet.equippedSlots || {};
+        const oldEquipped = currentViewingSheet.equippedSlots[dest];
+        if (oldEquipped && oldEquipped.name) {
+          const oldProt = parseInt(oldEquipped.prot, 10) || 0;
+          currentViewingSheet.backpack.push({
+            id: "bp_" + Date.now().toString(),
+            name: oldEquipped.name,
+            prot: oldProt,
+            efeito: oldEquipped.efeito || "",
+            desc: oldEquipped.desc || ""
+          });
+
+          // Subtrai a proteção do item que foi desequipado
+          if (oldProt > 0) {
+            currentViewingSheet.protCurrent = Math.max(0, (currentViewingSheet.protCurrent || 0) - oldProt);
+          }
+        }
+
+        const itemProt = parseInt(item.prot, 10) || 0;
+        currentViewingSheet.equippedSlots[dest] = {
+          name: item.name || "Item",
+          prot: itemProt,
+          efeito: item.efeito || "",
+          desc: item.desc || ""
+        };
+
+        // Ao equipar, a proteção adiciona às bolinhas e já vem marcada/ativa
+        if (itemProt > 0) {
+          currentViewingSheet.protCurrent = (currentViewingSheet.protCurrent || 0) + itemProt;
+        }
+
+        currentViewingSheet.backpack.splice(idx, 1);
+        renderBorealEquippedSlots();
+        renderBorealBackpack();
+        recalcBorealVitalsAndDT();
+        triggerBorealAutoSave();
+        showToast(`"${item.name || "Item"}" equipado em ${dest.toUpperCase()}!`, "success");
+      });
     });
 
     list.appendChild(card);
@@ -3504,22 +4004,107 @@ const btnAddBorealBp = document.getElementById("btnAddBorealBackpackItem");
 if (btnAddBorealBp) {
   btnAddBorealBp.addEventListener("click", () => {
     if (!currentViewingSheet) return;
-    const itemName = prompt("Nome do item para a mochila:");
-    if (!itemName) return;
-    const protStr = prompt("Bônus de Proteção (0 caso não seja armadura):", "0");
-    const prot = parseInt(protStr, 10) || 0;
 
     currentViewingSheet.backpack = currentViewingSheet.backpack || [];
     currentViewingSheet.backpack.push({
       id: "bp_" + Date.now().toString(),
-      name: itemName,
-      prot,
-      desc: "Item de aventura"
+      name: "",
+      prot: 0,
+      efeito: "",
+      desc: ""
     });
     renderBorealBackpack();
     triggerBorealAutoSave();
   });
 }
+
+// Sincronização Bidirecional e Auto-Save dos Campos da Ficha Boreal
+// 1. Nome do Personagem
+const bCharName = document.getElementById("borealCharName");
+const bFieldCharName = document.getElementById("borealFieldCharName");
+if (bCharName && bFieldCharName) {
+  bCharName.addEventListener("input", (e) => {
+    bFieldCharName.value = e.target.value;
+    if (currentViewingSheet) currentViewingSheet.name = e.target.value;
+    triggerBorealAutoSave();
+  });
+  bFieldCharName.addEventListener("input", (e) => {
+    bCharName.value = e.target.value;
+    if (currentViewingSheet) currentViewingSheet.name = e.target.value;
+    triggerBorealAutoSave();
+  });
+}
+
+// 2. Classe do Personagem
+const bCharClass = document.getElementById("borealCharClass");
+const bFieldClass = document.getElementById("borealFieldClass");
+if (bCharClass && bFieldClass) {
+  bCharClass.addEventListener("input", (e) => {
+    bFieldClass.value = e.target.value;
+    if (currentViewingSheet) {
+      currentViewingSheet.class = e.target.value;
+      currentViewingSheet.characterClass = e.target.value;
+    }
+    triggerBorealAutoSave();
+  });
+  bFieldClass.addEventListener("input", (e) => {
+    bCharClass.value = e.target.value;
+    if (currentViewingSheet) {
+      currentViewingSheet.class = e.target.value;
+      currentViewingSheet.characterClass = e.target.value;
+    }
+    triggerBorealAutoSave();
+  });
+}
+
+// 3. Nível do Personagem
+const bCharLevel = document.getElementById("borealCharLevel");
+const bFieldLevel = document.getElementById("borealFieldCharLevel");
+if (bCharLevel && bFieldLevel) {
+  bCharLevel.addEventListener("input", (e) => {
+    bFieldLevel.value = e.target.value;
+    if (currentViewingSheet) currentViewingSheet.level = parseInt(e.target.value, 10) || 1;
+    triggerBorealAutoSave();
+  });
+  bFieldLevel.addEventListener("input", (e) => {
+    bCharLevel.value = e.target.value;
+    if (currentViewingSheet) currentViewingSheet.level = parseInt(e.target.value, 10) || 1;
+    triggerBorealAutoSave();
+  });
+}
+
+// 4. Dinheiro do Personagem
+const bCharMoney = document.getElementById("borealCharMoney");
+if (bCharMoney) {
+  bCharMoney.addEventListener("input", (e) => {
+    if (currentViewingSheet) currentViewingSheet.money = parseInt(e.target.value, 10) || 0;
+    triggerBorealAutoSave();
+  });
+}
+
+// 5. Nome do Espírito
+const bFieldSpirit = document.getElementById("borealFieldSpirit");
+const spFieldNome = document.getElementById("spiritFieldNome");
+if (bFieldSpirit && spFieldNome) {
+  bFieldSpirit.addEventListener("input", (e) => {
+    spFieldNome.value = e.target.value;
+    if (currentViewingSheet?.spirit) currentViewingSheet.spirit.nome = e.target.value;
+    triggerBorealAutoSave();
+  });
+  spFieldNome.addEventListener("input", (e) => {
+    bFieldSpirit.value = e.target.value;
+    if (currentViewingSheet?.spirit) currentViewingSheet.spirit.nome = e.target.value;
+    triggerBorealAutoSave();
+  });
+}
+
+// 6. Campos adicionais do Espírito Drawer disparando AutoSave
+["spiritFieldNivel", "spiritDtFisico", "spiritDtMagico", "spiritDtMental", "spiritAttrCorpo", "spiritAttrPoder", "spiritAttrMente", "spiritDescAparencia", "spiritDescPersonalidade", "spiritDescHabitos"].forEach((id) => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener("input", () => triggerBorealAutoSave());
+  }
+});
 
 // Sincronização dos Seletores de Tipo do Espírito
 const fieldSpiritTypeSelect = document.getElementById("borealFieldSpiritType");
@@ -3768,12 +4353,25 @@ if (btnSaveSheetCrop) {
       if (sheetCropTarget === "boreal-char") {
         currentViewingSheet.avatarUrl = dataUrl;
         updateBorealPortraitDisplay(dataUrl);
+        triggerBorealAutoSave();
       } else if (sheetCropTarget === "boreal-spirit") {
         currentViewingSheet.spirit = currentViewingSheet.spirit || {};
         currentViewingSheet.spirit.avatarUrl = dataUrl;
         updateSpiritPortraitDisplay(dataUrl);
+        triggerBorealAutoSave();
       } else if (sheetCropTarget === "ed-char") {
         applyNewPortrait(dataUrl);
+      } else if (sheetCropTarget === "npc") {
+        const preview = document.getElementById("npcAvatarPreview");
+        if (preview) {
+          preview.innerHTML = `<img src="${dataUrl}" style="width: 100%; height: 100%; object-fit: cover;">`;
+        }
+        const hiddenInp = document.getElementById("npcAvatarUrl");
+        if (hiddenInp) hiddenInp.value = dataUrl;
+        closeModalById("modalCropSheetAvatar");
+        openModalById("modalCreateNPC");
+        showToast("Foto do NPC ajustada com sucesso!", "success");
+        return;
       }
 
       closeModalById("modalCropSheetAvatar");
@@ -3811,6 +4409,21 @@ if (btnSpiritPortraitTrig && spiritPortraitFileInput) {
   spiritPortraitFileInput.addEventListener("change", (e) => {
     if (e.target.files && e.target.files[0]) {
       handleImageCropFile(e.target.files[0], "boreal-spirit");
+    }
+  });
+}
+
+// Disparador de Upload de Foto para NPC com Cropper
+const btnUploadNpcAvatar = document.getElementById("btnUploadNpcAvatar");
+const npcAvatarInput = document.getElementById("npcAvatarInput");
+if (btnUploadNpcAvatar && npcAvatarInput) {
+  btnUploadNpcAvatar.addEventListener("click", () => {
+    npcAvatarInput.value = "";
+    npcAvatarInput.click();
+  });
+  npcAvatarInput.addEventListener("change", (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleImageCropFile(e.target.files[0], "npc");
     }
   });
 }
@@ -3950,9 +4563,10 @@ borealPillTabs.forEach((tab) => {
 async function saveBorealSheet(isAuto = false) {
   if (!currentViewingSheet || !activeCampaign) return;
 
-  const charName = document.getElementById("borealCharName")?.value.trim() || currentViewingSheet.name || "Aventureiro";
-  const charClass = document.getElementById("borealCharClass")?.value.trim() || currentViewingSheet.class || "Iniciado";
-  const level = parseInt(document.getElementById("borealCharLevel")?.value, 10) || 1;
+  const charName = document.getElementById("borealCharName")?.value.trim() || document.getElementById("borealFieldCharName")?.value.trim() || currentViewingSheet.name || "Aventureiro";
+  const charClass = document.getElementById("borealFieldClass")?.value.trim() || document.getElementById("borealCharClass")?.value.trim() || currentViewingSheet.class || currentViewingSheet.characterClass || "Iniciado";
+  const level = parseInt(document.getElementById("borealCharLevel")?.value, 10) || parseInt(document.getElementById("borealFieldCharLevel")?.value, 10) || currentViewingSheet.level || 1;
+  const money = parseInt(document.getElementById("borealCharMoney")?.value, 10) || currentViewingSheet.money || 0;
   const accentColor = currentViewingSheet.accentColor || "#3b82f6";
 
   const corpo = parseInt(document.getElementById("borealAttrCorpo")?.value, 10) || 0;
@@ -3961,9 +4575,9 @@ async function saveBorealSheet(isAuto = false) {
 
   // Atualiza dados do Espírito com campos do drawer
   const sp = currentViewingSheet.spirit || {};
-  sp.nome = document.getElementById("spiritFieldNome")?.value.trim() || sp.nome || "Espírito Guardião";
+  sp.nome = document.getElementById("spiritFieldNome")?.value.trim() || document.getElementById("borealFieldSpirit")?.value.trim() || sp.nome || "Espírito Guardião";
   sp.nivel = parseInt(document.getElementById("spiritFieldNivel")?.value, 10) || sp.nivel || 1;
-  sp.tipo = document.getElementById("spiritFieldTipo")?.value.trim() || sp.tipo || "Sabedoria";
+  sp.tipo = document.getElementById("spiritFieldTipo")?.value.trim() || document.getElementById("borealHeaderSpiritSelect")?.value.trim() || sp.tipo || "Sabedoria";
   sp.dtFisico = parseInt(document.getElementById("spiritDtFisico")?.value, 10) || sp.dtFisico || 6;
   sp.dtMagico = parseInt(document.getElementById("spiritDtMagico")?.value, 10) || sp.dtMagico || 6;
   sp.dtMental = parseInt(document.getElementById("spiritDtMental")?.value, 10) || sp.dtMental || 6;
@@ -3981,6 +4595,7 @@ async function saveBorealSheet(isAuto = false) {
     class: charClass,
     characterClass: charClass,
     level,
+    money,
     accentColor,
     avatarUrl: currentViewingSheet.avatarUrl || "",
     system: "Boreal RPG",

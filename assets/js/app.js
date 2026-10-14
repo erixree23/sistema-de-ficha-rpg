@@ -407,6 +407,7 @@ if (formCreateCampaign) {
             uid: currentUser.uid,
             name: currentUser.displayName || currentUser.email.split("@")[0],
             email: currentUser.email,
+            photoURL: currentUser.photoURL || localStorage.getItem(`veu_avatar_${currentUser.uid}`) || "",
             role: "master",
             joinedAt: new Date().toISOString()
           }
@@ -476,6 +477,7 @@ if (formJoinCampaign) {
         uid: currentUser.uid,
         name: currentUser.displayName || currentUser.email.split("@")[0],
         email: currentUser.email,
+        photoURL: currentUser.photoURL || localStorage.getItem(`veu_avatar_${currentUser.uid}`) || "",
         role: "player",
         joinedAt: new Date().toISOString()
       };
