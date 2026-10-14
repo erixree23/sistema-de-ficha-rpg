@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Véu RPG - Painel Geral e Gestão de Campanhas">
   <title>Véu RPG | Gestão de Campanhas</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#08090c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
   <link rel="stylesheet" href="assets/css/global.css">
   <link rel="stylesheet" href="assets/css/dashboard.css">
 </head>
@@ -966,20 +972,32 @@
         <!-- PÍLULA DE NAVEGAÇÃO FLUTUANTE PARA MOBILE (< 768px) -->
         <nav class="ed-mobile-column-pill" id="edMobileColumnPill">
           <button type="button" class="ed-pill-tab active" data-col="1">
-            <span class="pill-number">1</span>
-            <span class="pill-title">Atributos</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Atributos</span>
           </button>
           <button type="button" class="ed-pill-tab" data-col="2">
-            <span class="pill-number">2</span>
-            <span class="pill-title">Arcana &amp; Gear</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+            <span>Arcana</span>
           </button>
           <button type="button" class="ed-pill-tab" data-col="3">
-            <span class="pill-number">3</span>
-            <span class="pill-title">Inventário</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <path d="M16 10a4 4 0 0 1-8 0"></path>
+            </svg>
+            <span>Inventário</span>
           </button>
           <button type="button" class="ed-pill-tab ed-pill-home" id="btnEdPillHome" title="Voltar ao Painel Geral">
-            <span class="pill-number">🏠</span>
-            <span class="pill-title">Home</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span>Home</span>
           </button>
         </nav>
       </div>
@@ -989,25 +1007,24 @@
            ======================================================================== -->
       <div class="boreal-sheet-workspace" id="borealSheetBox" style="display: none;">
 
-        <!-- Botão Flutuante Lateral para abrir o Espírito Drawer -->
+        <!-- Botão Flutuante Lateral para abrir o Espírito Drawer (Ícone Fantasma Apenas) -->
         <button type="button" class="boreal-drawer-toggle-btn" id="btnToggleSpiritDrawer" title="Abrir Ficha do Espírito">
-          <span class="drawer-btn-icon">👻</span>
-          <span class="drawer-btn-label">Ficha do Espírito</span>
+          👻
         </button>
 
         <!-- CABEÇALHO UNIFICADO NO TOPO (BOREAL) -->
         <header class="boreal-sheet-header" id="borealSheetHeader">
           <div class="boreal-header-brand">
             <div class="boreal-header-names">
-              <input type="text" id="borealCharName" class="boreal-input-title" placeholder="NOME DO PERSONAGEM" title="Nome do Personagem">
+              <input type="text" id="borealCharName" class="boreal-input-title" placeholder="Nome" title="Nome do Personagem">
               <div class="boreal-sub-line">
-                <input type="text" id="borealCharClass" class="boreal-input-subtitle" placeholder="CLASSE / CONCEITO" title="Classe ou Conceito">
+                <input type="text" id="borealCharClass" class="boreal-input-subtitle" placeholder="Classe" title="Classe ou Conceito">
                 <input type="hidden" id="borealSheetId">
               </div>
             </div>
           </div>
 
-          <!-- Metadados do Topo (Espírito, Nível, Controles) -->
+          <!-- Metadados do Topo (Espírito, Nível, Dinheiro, Controles) -->
           <div class="boreal-header-meta">
             <div class="boreal-meta-pill-group">
               <div class="boreal-header-spirit-box">
@@ -1027,6 +1044,11 @@
               <div class="boreal-header-level-box" title="Nível do Personagem">
                 <span class="boreal-meta-lbl">NÍVEL:</span>
                 <input type="number" id="borealCharLevel" class="boreal-level-input" min="1" max="50" value="1">
+              </div>
+              <span class="boreal-meta-sep">•</span>
+              <div class="boreal-header-money-box" title="Dinheiro / Moedas">
+                <span class="boreal-meta-lbl">🪙 DINHEIRO:</span>
+                <input type="number" id="borealCharMoney" class="boreal-level-input" style="width: 55px;" min="0" value="0">
               </div>
             </div>
 
@@ -1097,19 +1119,6 @@
                   <div class="boreal-field-row">
                     <label class="boreal-field-label">ESPÍRITO:</label>
                     <input type="text" id="borealFieldSpirit" class="boreal-field-input" placeholder="Nome do Espírito">
-                  </div>
-                  <div class="boreal-field-row">
-                    <label class="boreal-field-label">TIPO:</label>
-                    <select id="borealFieldSpiritType" class="boreal-field-input" style="cursor: pointer;">
-                      <option value="Sabedoria">Sabedoria</option>
-                      <option value="Emocionais">Emocionais</option>
-                      <option value="Profética">Profética</option>
-                      <option value="Conexão">Conexão</option>
-                      <option value="Elemental">Elemental</option>
-                      <option value="Manipulação">Manipulação</option>
-                      <option value="Vitalidade">Vitalidade</option>
-                      <option value="Físico">Físico</option>
-                    </select>
                   </div>
                   <div class="boreal-field-row">
                     <label class="boreal-field-label">CLASSE:</label>
@@ -1291,7 +1300,7 @@
                   <div class="boreal-magic-select-row">
                     <div class="boreal-magic-pill-box">
                       <label class="boreal-magic-lbl">COMPLEMENTOS</label>
-                      <input type="text" id="borealMagicComplementoInput" class="boreal-magic-input" placeholder="Ex: Duração, Área, etc.">
+                      <input type="text" id="borealMagicComplementoInput" class="boreal-magic-input" placeholder="Complementos">
                     </div>
                     <div class="boreal-magic-pill-box">
                       <label class="boreal-magic-lbl">PERÍCIA DO TESTE</label>
@@ -1446,20 +1455,32 @@
         <!-- PÍLULA DE NAVEGAÇÃO FLUTUANTE PARA MOBILE (< 768px) BOREAL -->
         <nav class="boreal-mobile-column-pill" id="borealMobileColumnPill">
           <button type="button" class="boreal-pill-tab active" data-bcol="1">
-            <span class="pill-number">1</span>
-            <span class="pill-title">Personagem</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Personagem</span>
           </button>
           <button type="button" class="boreal-pill-tab" data-bcol="2">
-            <span class="pill-number">2</span>
-            <span class="pill-title">Magia &amp; Classes</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+            <span>Magias</span>
           </button>
           <button type="button" class="boreal-pill-tab" data-bcol="3">
-            <span class="pill-number">3</span>
-            <span class="pill-title">Equipamento</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <path d="M16 10a4 4 0 0 1-8 0"></path>
+            </svg>
+            <span>Itens</span>
           </button>
           <button type="button" class="boreal-pill-tab boreal-pill-home" id="btnBorealPillHome" title="Voltar ao Painel Geral">
-            <span class="pill-number">🏠</span>
-            <span class="pill-title">Home</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span>Home</span>
           </button>
         </nav>
 
@@ -2154,21 +2175,37 @@
   </div>
 
   <!-- ========================================================================
-       11. MODAL: CRIAR NPC / MONSTRO RÁPIDO
+       11. MODAL: CRIAR / EDITAR NPC / MONSTRO
        ======================================================================== -->
   <div id="modalCreateNPC" class="modal-overlay" role="dialog" aria-modal="true">
-    <div class="modal-box" style="max-width: 480px;">
+    <div class="modal-box" style="max-width: 520px; max-height: 90vh; overflow-y: auto;">
       <div class="modal-header">
-        <h3 class="modal-title">Novo NPC ou Monstro</h3>
+        <h3 class="modal-title" id="modalCreateNPCTitle">Novo NPC ou Monstro</h3>
         <button type="button" class="btn-close-modal" data-close-modal="modalCreateNPC" aria-label="Fechar modal">&times;</button>
       </div>
       <form id="formCreateNPC" novalidate>
-        <div class="form-group">
-          <label for="npcName" class="form-label">Nome da Criatura / Personagem</label>
-          <input type="text" id="npcName" class="form-input" placeholder="Ex: Cultista das Sombras" required style="padding-left: 14px;">
+        <input type="hidden" id="npcEditId" value="">
+        <input type="hidden" id="npcAvatarUrl" value="">
+
+        <!-- Foto do NPC com Zoom e Recorte -->
+        <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px; background: rgba(255,255,255,0.03); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--glass-border);">
+          <div id="npcAvatarPreview" style="width: 58px; height: 58px; border-radius: 50%; background: rgba(255,255,255,0.08); border: 2px solid var(--glass-border); overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0;">
+            👾
+          </div>
+          <div>
+            <input type="file" id="npcAvatarInput" accept="image/*" style="display: none;">
+            <button type="button" class="btn btn-ghost btn-sm" id="btnUploadNpcAvatar" style="font-size: 0.82rem;">
+              📷 Escolher Foto
+            </button>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 4px;">Ajuste com zoom e recorte</div>
+          </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label for="npcName" class="form-label">Nome da Criatura / NPC</label>
+            <input type="text" id="npcName" class="form-input" placeholder="Nome" required style="padding-left: 14px;">
+          </div>
           <div class="form-group">
             <label for="npcType" class="form-label">Tipo</label>
             <select id="npcType" class="form-input" style="padding-left: 10px;">
@@ -2178,28 +2215,94 @@
               <option value="Neutro">Neutro</option>
             </select>
           </div>
+        </div>
+
+        <!-- Vitais e Defesas -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 6px;">
           <div class="form-group">
-            <label for="npcMaxHp" class="form-label">Vida (HP)</label>
-            <input type="number" id="npcMaxHp" class="form-input" value="18" min="1" required style="padding-left: 14px;">
+            <label for="npcMaxHp" class="form-label" style="font-size: 0.75rem;">❤️ Vida</label>
+            <input type="number" id="npcMaxHp" class="form-input" value="15" min="1" required style="padding-left: 8px; text-align: center;">
           </div>
           <div class="form-group">
-            <label for="npcAc" class="form-label">Defesa (CA)</label>
-            <input type="number" id="npcAc" class="form-input" value="12" min="0" required style="padding-left: 14px;">
+            <label for="npcMaxRes" class="form-label" style="font-size: 0.75rem;">🧠 Resiliência</label>
+            <input type="number" id="npcMaxRes" class="form-input" value="10" min="0" required style="padding-left: 8px; text-align: center;">
+          </div>
+          <div class="form-group">
+            <label for="npcDefPadrao" class="form-label" style="font-size: 0.75rem;">🛡️ Def. Padrão</label>
+            <input type="number" id="npcDefPadrao" class="form-input" value="10" min="0" required style="padding-left: 8px; text-align: center;">
+          </div>
+          <div class="form-group">
+            <label for="npcDefMagica" class="form-label" style="font-size: 0.75rem;">🔮 Def. Mágica</label>
+            <input type="number" id="npcDefMagica" class="form-input" value="10" min="0" required style="padding-left: 8px; text-align: center;">
           </div>
         </div>
 
-        <div class="form-group">
+        <!-- Atributos: Corpo, Poder, Mente -->
+        <div style="margin-top: 8px;">
+          <label class="form-label" style="font-size: 0.78rem;">Atributos</label>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+            <div class="form-group">
+              <label for="npcAttrCorpo" class="form-label" style="font-size: 0.72rem; color: var(--text-muted);">Corpo</label>
+              <input type="number" id="npcAttrCorpo" class="form-input" value="0" style="padding-left: 10px; text-align: center;">
+            </div>
+            <div class="form-group">
+              <label for="npcAttrPoder" class="form-label" style="font-size: 0.72rem; color: var(--text-muted);">Poder</label>
+              <input type="number" id="npcAttrPoder" class="form-input" value="0" style="padding-left: 10px; text-align: center;">
+            </div>
+            <div class="form-group">
+              <label for="npcAttrMente" class="form-label" style="font-size: 0.72rem; color: var(--text-muted);">Mente</label>
+              <input type="number" id="npcAttrMente" class="form-input" value="0" style="padding-left: 10px; text-align: center;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Perícias Treinadas (clicáveis para marcar) -->
+        <div class="form-group" style="margin-top: 10px;">
+          <label class="form-label" style="font-size: 0.78rem;">Perícias Treinadas (clique para marcar/desmarcar)</label>
+          <div id="npcSkillsPickerGrid" style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 120px; overflow-y: auto; padding: 8px; background: rgba(0,0,0,0.25); border-radius: var(--radius-sm); border: 1px solid var(--glass-border);">
+            <!-- preenchido dinamicamente via JS -->
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 6px;">
           <label for="npcNotes" class="form-label">Ações / Notas Rápidas</label>
-          <textarea id="npcNotes" class="form-input" rows="3" placeholder="Ex: Garra +4 (1d6+2 perfurante). Resistente a frio." style="padding-left: 14px; resize: vertical;"></textarea>
+          <textarea id="npcNotes" class="form-input" rows="2" placeholder="Notas..." style="padding-left: 14px; resize: vertical;"></textarea>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
           <button type="button" class="btn btn-ghost" data-close-modal="modalCreateNPC">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Salvar NPC</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitNpcForm">Salvar NPC</button>
         </div>
       </form>
     </div>
   </div>
+
+  <!-- MODAL: VER / GERENCIAR PERÍCIAS DO NPC -->
+  <div id="modalNpcSkillsView" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-box" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="npcSkillsModalTitle">Perícias do NPC</h3>
+        <button type="button" class="btn-close-modal" data-close-modal="modalNpcSkillsView" aria-label="Fechar modal">&times;</button>
+      </div>
+      <div style="padding: 12px 0;">
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Perícias ativas deste personagem:</div>
+        <div id="npcActiveSkillsList" style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 48px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: var(--radius-sm); border: 1px solid var(--glass-border); margin-bottom: 14px;">
+        </div>
+
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px;">Adicionar outra perícia:</div>
+        <div style="display: flex; gap: 8px;">
+          <select id="selectAddNpcSkill" class="form-input" style="flex: 1; padding-left: 10px;">
+            <option value="">Selecione uma perícia...</option>
+          </select>
+          <button type="button" class="btn btn-primary btn-sm" id="btnAddNpcSkillDirect">+ Adicionar</button>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+        <button type="button" class="btn btn-ghost" data-close-modal="modalNpcSkillsView">Fechar</button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- ========================================================================
        12. MODAL: ADICIONAR COMBATENTE À INICIATIVA
@@ -2435,5 +2538,14 @@
 
   <!-- App Dashboard Module -->
   <script type="module" src="assets/js/app.js"></script>
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch((err) => console.warn("SW reg fail:", err));
+      });
+    }
+  </script>
 </body>
 </html>

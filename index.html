@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Véu RPG - Sistema de Fichas de Personagem com design Liquid Glass">
   <title>Véu RPG | Autenticação</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#08090c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
   <link rel="stylesheet" href="assets/css/global.css">
   <link rel="stylesheet" href="assets/css/auth.css">
 </head>
@@ -227,5 +233,14 @@
 
   <!-- Main Auth ES Module -->
   <script type="module" src="assets/js/auth.js"></script>
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch((err) => console.warn("SW reg fail:", err));
+      });
+    }
+  </script>
 </body>
 </html>
