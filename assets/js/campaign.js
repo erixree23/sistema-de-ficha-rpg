@@ -876,8 +876,11 @@ function openViewSheetModal(sheet) {
   // Inicializa estados de responsividade
   if (edBody) {
     if (!edBody.getAttribute("data-active-view")) edBody.setAttribute("data-active-view", "1-2");
-    if (!edBody.getAttribute("data-active-mobile")) edBody.setAttribute("data-active-mobile", "1");
+    edBody.setAttribute("data-active-mobile", "1");
   }
+  document.querySelectorAll(".ed-pill-tab[data-col]").forEach((t) => {
+    t.classList.toggle("active", t.getAttribute("data-col") === "1");
+  });
 
   // Controle de permissão de salvar
   if (btnSave) {
@@ -1579,10 +1582,11 @@ if (btnMedNext && edBodyContainer) {
 }
 
 // Pílula Móvel Flutuante (< 768px)
-const pillTabs = document.querySelectorAll(".ed-pill-tab");
+const pillTabs = document.querySelectorAll(".ed-pill-tab[data-col]");
 pillTabs.forEach((tab) => {
   tab.addEventListener("click", () => {
     const col = tab.getAttribute("data-col");
+    if (!col) return;
     if (edBodyContainer) edBodyContainer.setAttribute("data-active-mobile", col);
     pillTabs.forEach((t) => t.classList.remove("active"));
     tab.classList.add("active");
@@ -2764,6 +2768,15 @@ function openBorealSheetModal(sheet) {
   // Exibe a seção de visualização de ficha
   showSheetMobilePill();
 
+  const bSheetBody = document.getElementById("borealSheetBody");
+  if (bSheetBody) {
+    if (!bSheetBody.getAttribute("data-active-view")) bSheetBody.setAttribute("data-active-view", "1-2");
+    bSheetBody.setAttribute("data-active-mobile", "1");
+  }
+  document.querySelectorAll(".boreal-pill-tab[data-bcol]").forEach((t) => {
+    t.classList.toggle("active", t.getAttribute("data-bcol") === "1");
+  });
+
   if (typeof storedSwitchSection === "function") {
     storedSwitchSection("sheet-view");
   } else {
@@ -3922,10 +3935,11 @@ if (btnBorealMedNext && borealSheetBody) {
   });
 }
 
-const borealPillTabs = document.querySelectorAll(".boreal-pill-tab");
+const borealPillTabs = document.querySelectorAll(".boreal-pill-tab[data-bcol]");
 borealPillTabs.forEach((tab) => {
   tab.addEventListener("click", () => {
     const bcol = tab.getAttribute("data-bcol");
+    if (!bcol) return;
     if (borealSheetBody) borealSheetBody.setAttribute("data-active-mobile", bcol);
     borealPillTabs.forEach((t) => t.classList.remove("active"));
     tab.classList.add("active");
