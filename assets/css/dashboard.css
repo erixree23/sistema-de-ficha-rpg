@@ -3154,10 +3154,13 @@ main.dashboard-content,
 
   position: relative;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   margin-top: 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow-x: clip;
   transition: all var(--transition-normal);
 }
 
@@ -3451,6 +3454,8 @@ main.dashboard-content,
   display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .boreal-field-label {
@@ -3462,6 +3467,9 @@ main.dashboard-content,
 
 .boreal-field-input {
   flex: 1;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   background: var(--input-bg);
   border: 1px solid var(--boreal-border);
   border-radius: var(--radius-sm);
@@ -3477,6 +3485,9 @@ main.dashboard-content,
 
 .boreal-field-num {
   max-width: 50px;
+  min-width: 44px;
+  width: 44px;
+  flex: 0 0 44px;
   text-align: center;
 }
 
@@ -4108,9 +4119,11 @@ main.dashboard-content,
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--boreal-border);
     border-radius: var(--radius-full);
-    padding: 6px 10px;
-    gap: 8px;
+    padding: 5px 8px;
+    gap: 6px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+    max-width: calc(100vw - 16px);
+    box-sizing: border-box;
   }
 
   [data-theme="light"] .boreal-mobile-column-pill,
@@ -4126,11 +4139,12 @@ main.dashboard-content,
     background: transparent;
     border: none;
     border-radius: var(--radius-full);
-    padding: 6px 12px;
+    padding: 6px 10px;
     color: var(--text-muted);
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     font-weight: 600;
     cursor: pointer;
+    white-space: nowrap;
     transition: all var(--transition-fast);
   }
 
@@ -4138,6 +4152,25 @@ main.dashboard-content,
     background: var(--sheet-accent);
     color: #ffffff;
     box-shadow: 0 0 10px var(--sheet-accent-glow);
+  }
+}
+
+@media (max-width: 480px) {
+  .boreal-mobile-column-pill,
+  .ed-mobile-column-pill {
+    padding: 4px 6px;
+    gap: 4px;
+  }
+
+  .boreal-pill-tab,
+  .ed-pill-tab {
+    padding: 5px 8px;
+    font-size: 0.72rem;
+  }
+
+  .boreal-pill-tab:not(.active) .pill-title,
+  .ed-pill-tab:not(.active) .pill-title {
+    display: none;
   }
 }
 
@@ -4292,8 +4325,66 @@ main.dashboard-content,
 }
 
 @media (max-width: 767px) {
+  .boreal-sheet-workspace {
+    padding-bottom: 95px !important;
+  }
+
+  .boreal-sheet-header {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .boreal-input-title {
+    font-size: 1.25rem;
+    width: 100%;
+  }
+
+  .boreal-header-meta {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .boreal-sheet-body {
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    gap: 14px;
+  }
+
+  .boreal-col {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .boreal-column-card {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+  }
+
+  /* Botão Flutuante do Espírito no Mobile: posicionado no canto inferior direito, acima da pílula, sem cobrir o centro da tela */
+  .boreal-drawer-toggle-btn {
+    top: auto;
+    bottom: 76px;
+    right: 12px;
+    transform: none;
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    padding: 8px 14px;
+    font-size: 0.74rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+    z-index: 110;
+  }
+
+  /* Perícias no celular: 1 coluna limpa e espaçosa para não comprimir os nomes e botões */
+  .boreal-skills-2cols-grid {
     grid-template-columns: 1fr;
+    gap: 6px;
   }
 
   .boreal-sheet-body[data-active-mobile="1"] .boreal-col-2,
