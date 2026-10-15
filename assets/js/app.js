@@ -147,9 +147,49 @@ function switchSection(sectionId) {
     if (edPill) edPill.style.display = "";
   }
 
+  // Atualiza a posição do indicador deslizante móvel
+  requestAnimationFrame(updateMobileNavIndicator);
+
   // Rola suavemente para o topo do conteúdo
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
+
+// Atualiza o indicador deslizante suave da navegação inferior móvel
+export function updateMobileNavIndicator() {
+  const nav = document.getElementById("mobileBottomNav");
+  const indicator = document.getElementById("mobileNavIndicator");
+  if (!nav || !indicator) return;
+
+  if (nav.offsetParent === null || window.innerWidth > 768) {
+    indicator.style.opacity = "0";
+    return;
+  }
+
+  const activeBtn = nav.querySelector(".mobile-nav-btn.active");
+  if (!activeBtn || activeBtn.offsetParent === null || activeBtn.style.display === "none") {
+    indicator.style.opacity = "0";
+    return;
+  }
+
+  const navRect = nav.getBoundingClientRect();
+  const btnRect = activeBtn.getBoundingClientRect();
+  if (btnRect.width === 0) {
+    requestAnimationFrame(updateMobileNavIndicator);
+    return;
+  }
+
+  const left = btnRect.left - navRect.left;
+  const width = btnRect.width;
+
+  indicator.style.transform = `translateX(${left}px)`;
+  indicator.style.width = `${width}px`;
+  indicator.style.opacity = "1";
+}
+window.updateMobileNavIndicator = updateMobileNavIndicator;
+
+window.addEventListener("resize", () => {
+  updateMobileNavIndicator();
+});
 
 // Listeners de navegação (PC & Mobile)
 document.querySelectorAll("[data-section]").forEach((btn) => {

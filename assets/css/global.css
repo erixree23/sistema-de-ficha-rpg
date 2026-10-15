@@ -127,7 +127,6 @@ body {
   color: var(--text-main);
   background-color: var(--bg-base);
   background-image: var(--bg-gradient);
-  background-attachment: fixed;
   overflow-x: hidden;
   box-sizing: border-box;
   line-height: 1.5;
@@ -141,63 +140,22 @@ main {
   max-width: 100%;
 }
 
-/* Liquid Glass Ambient Blobs */
+/* Liquid Glass Ambient Blobs (Ultra-Performance GPU-friendly Ambient Lighting) */
 .ambient-blobs {
   position: fixed;
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  z-index: 0;
+  z-index: -1;
+  contain: strict;
+  background:
+    radial-gradient(circle at 12% 18%, var(--blob-1) 0%, transparent 45%),
+    radial-gradient(circle at 88% 82%, var(--blob-2) 0%, transparent 45%),
+    radial-gradient(circle at 55% 50%, var(--blob-3) 0%, transparent 40%);
 }
 
 .blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.85;
-  will-change: transform;
-  animation: float 20s ease-in-out infinite alternate;
-}
-
-.blob-1 {
-  width: 500px;
-  height: 500px;
-  background: var(--blob-1);
-  top: -100px;
-  left: -120px;
-  animation-duration: 22s;
-}
-
-.blob-2 {
-  width: 450px;
-  height: 450px;
-  background: var(--blob-2);
-  bottom: -80px;
-  right: -80px;
-  animation-duration: 26s;
-  animation-delay: -5s;
-}
-
-.blob-3 {
-  width: 380px;
-  height: 380px;
-  background: var(--blob-3);
-  top: 40%;
-  right: 25%;
-  animation-duration: 18s;
-  animation-delay: -10s;
-}
-
-@keyframes float {
-  0% {
-    transform: translate(0, 0) scale(1);
-  }
-  50% {
-    transform: translate(40px, 30px) scale(1.08);
-  }
-  100% {
-    transform: translate(-30px, 50px) scale(0.95);
-  }
+  display: none;
 }
 
 /* ==========================================================================
@@ -205,12 +163,12 @@ main {
    ========================================================================== */
 .glass-panel {
   background: var(--glass-bg);
-  backdrop-filter: blur(18px) saturate(180%);
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
   border-radius: var(--radius-lg);
-  transition: all var(--transition-normal);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .glass-panel:hover {

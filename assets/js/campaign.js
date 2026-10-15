@@ -1590,6 +1590,7 @@ pillTabs.forEach((tab) => {
     if (edBodyContainer) edBodyContainer.setAttribute("data-active-mobile", col);
     pillTabs.forEach((t) => t.classList.remove("active"));
     tab.classList.add("active");
+    updateEdPillIndicator();
   });
 });
 
@@ -1753,6 +1754,7 @@ if (btnBackToCampaignFromSheet) {
       const secCamp = document.getElementById("section-campaign-detail");
       if (secCamp) secCamp.classList.add("active");
     }
+    renderSheets();
   });
 }
 
@@ -2667,8 +2669,14 @@ compendiumFilters.forEach((pill) => {
   });
 });
 
+let compSearchTimeout = null;
 if (compendiumSearch) {
-  compendiumSearch.addEventListener("input", () => renderCompendium());
+  compendiumSearch.addEventListener("input", () => {
+    clearTimeout(compSearchTimeout);
+    compSearchTimeout = setTimeout(() => {
+      renderCompendium();
+    }, 180);
+  });
 }
 
 if (btnOpenCreateCompendium) {
@@ -3176,9 +3184,6 @@ function openBorealSheetModal(sheet) {
   // Preenche Campos do Espírito Drawer
   populateSpiritDrawerFields();
 
-  // Exibe a seção de visualização de ficha
-  showSheetMobilePill();
-
   const bSheetBody = document.getElementById("borealSheetBody");
   if (bSheetBody) {
     if (!bSheetBody.getAttribute("data-active-view")) bSheetBody.setAttribute("data-active-view", "1-2");
@@ -3187,6 +3192,9 @@ function openBorealSheetModal(sheet) {
   document.querySelectorAll(".boreal-pill-tab[data-bcol]").forEach((t) => {
     t.classList.toggle("active", t.getAttribute("data-bcol") === "1");
   });
+
+  // Exibe a seção de visualização de ficha e posiciona a pílula deslizante
+  showSheetMobilePill();
 
   if (typeof storedSwitchSection === "function") {
     storedSwitchSection("sheet-view");
@@ -4467,6 +4475,11 @@ function showSheetMobilePill() {
 
   const edPill = document.getElementById("edMobileColumnPill");
   if (edPill) edPill.style.display = "";
+
+  requestAnimationFrame(() => {
+    updateBorealPillIndicator();
+    updateEdPillIndicator();
+  });
 }
 
 // Ao apertar Home na pílula da ficha: mantém a ficha aberta, esconde a pílula da ficha e mostra a pílula da Home (+ botão Ficha)
@@ -4483,6 +4496,12 @@ function showHomeMobilePillInSheet() {
   if (mobileNavBtnSheet) {
     mobileNavBtnSheet.style.display = "flex";
   }
+
+  requestAnimationFrame(() => {
+    if (typeof window.updateMobileNavIndicator === "function") {
+      window.updateMobileNavIndicator();
+    }
+  });
 }
 
 if (btnBorealPillHome) btnBorealPillHome.addEventListener("click", showHomeMobilePillInSheet);
@@ -4494,6 +4513,76 @@ if (mobileNavBtnSheet) {
   });
 }
 
+// Indicadores deslizantes suaves para as pílulas móveis da ficha
+export function updateBorealPillIndicator() {
+  const nav = document.getElementById("borealMobileColumnPill");
+  const indicator = document.getElementById("borealPillIndicator");
+  if (!nav || !indicator) return;
+
+  if (nav.offsetParent === null || window.innerWidth > 768) {
+    indicator.style.opacity = "0";
+    return;
+  }
+
+  const activeBtn = nav.querySelector(".boreal-pill-tab.active");
+  if (!activeBtn || activeBtn.offsetParent === null || activeBtn.style.display === "none") {
+    indicator.style.opacity = "0";
+    return;
+  }
+
+  const navRect = nav.getBoundingClientRect();
+  const btnRect = activeBtn.getBoundingClientRect();
+  if (btnRect.width === 0) {
+    requestAnimationFrame(updateBorealPillIndicator);
+    return;
+  }
+
+  const left = btnRect.left - navRect.left;
+  const width = btnRect.width;
+
+  indicator.style.transform = `translateX(${left}px)`;
+  indicator.style.width = `${width}px`;
+  indicator.style.opacity = "1";
+}
+
+export function updateEdPillIndicator() {
+  const nav = document.getElementById("edMobileColumnPill");
+  const indicator = document.getElementById("edPillIndicator");
+  if (!nav || !indicator) return;
+
+  if (nav.offsetParent === null || window.innerWidth > 768) {
+    indicator.style.opacity = "0";
+    return;
+  }
+
+  const activeBtn = nav.querySelector(".ed-pill-tab.active");
+  if (!activeBtn || activeBtn.offsetParent === null || activeBtn.style.display === "none") {
+    indicator.style.opacity = "0";
+    return;
+  }
+
+  const navRect = nav.getBoundingClientRect();
+  const btnRect = activeBtn.getBoundingClientRect();
+  if (btnRect.width === 0) {
+    requestAnimationFrame(updateEdPillIndicator);
+    return;
+  }
+
+  const left = btnRect.left - navRect.left;
+  const width = btnRect.width;
+
+  indicator.style.transform = `translateX(${left}px)`;
+  indicator.style.width = `${width}px`;
+  indicator.style.opacity = "1";
+}
+
+window.updateBorealPillIndicator = updateBorealPillIndicator;
+window.updateEdPillIndicator = updateEdPillIndicator;
+
+window.addEventListener("resize", () => {
+  updateBorealPillIndicator();
+  updateEdPillIndicator();
+});
 
 // Engrenagem: Troca de Cor e Tema
 const btnBorealGear = document.getElementById("btnBorealGearMenu");
@@ -4556,6 +4645,7 @@ borealPillTabs.forEach((tab) => {
     if (borealSheetBody) borealSheetBody.setAttribute("data-active-mobile", bcol);
     borealPillTabs.forEach((t) => t.classList.remove("active"));
     tab.classList.add("active");
+    updateBorealPillIndicator();
   });
 });
 
@@ -4630,7 +4720,9 @@ async function saveBorealSheet(isAuto = false) {
     const cachedIdx = campaignSheetsCache.findIndex((s) => s.id === currentViewingSheet.id);
     if (cachedIdx !== -1) {
       campaignSheetsCache[cachedIdx] = { ...campaignSheetsCache[cachedIdx], ...payload };
-      renderSheets();
+      if (!isAuto) {
+        renderSheets();
+      }
     }
 
     if (!isAuto) {
