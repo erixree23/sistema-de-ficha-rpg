@@ -1,5 +1,5 @@
 // Service Worker para PWA do Véu RPG
-const CACHE_NAME = "veu-rpg-cache-v1";
+const CACHE_NAME = "veu-rpg-cache-v2";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();

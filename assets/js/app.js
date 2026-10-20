@@ -135,16 +135,10 @@ function switchSection(sectionId) {
     btn.classList.toggle("active", isTarget);
   });
 
-  // Se saiu da ficha, restaura a pílula geral sem o botão Ficha
+  // Se saiu da ficha, restaura a pílula geral
   if (sectionId !== "sheet-view") {
     const bottomNav = document.getElementById("mobileBottomNav");
     if (bottomNav) bottomNav.style.display = "";
-    const sheetNavBtn = document.getElementById("mobileNavBtnSheet");
-    if (sheetNavBtn) sheetNavBtn.style.display = "none";
-    const borealPill = document.getElementById("borealMobileColumnPill");
-    if (borealPill) borealPill.style.display = "";
-    const edPill = document.getElementById("edMobileColumnPill");
-    if (edPill) edPill.style.display = "";
   }
 
   // Atualiza a posição do indicador deslizante móvel
@@ -160,26 +154,24 @@ export function updateMobileNavIndicator() {
   const indicator = document.getElementById("mobileNavIndicator");
   if (!nav || !indicator) return;
 
-  if (nav.offsetParent === null || window.innerWidth > 768) {
+  const navStyle = window.getComputedStyle(nav);
+  if (navStyle.display === "none" || navStyle.visibility === "hidden") {
     indicator.style.opacity = "0";
     return;
   }
 
   const activeBtn = nav.querySelector(".mobile-nav-btn.active");
-  if (!activeBtn || activeBtn.offsetParent === null || activeBtn.style.display === "none") {
+  if (!activeBtn || window.getComputedStyle(activeBtn).display === "none") {
     indicator.style.opacity = "0";
     return;
   }
 
-  const navRect = nav.getBoundingClientRect();
-  const btnRect = activeBtn.getBoundingClientRect();
-  if (btnRect.width === 0) {
+  const left = activeBtn.offsetLeft;
+  const width = activeBtn.offsetWidth;
+  if (width === 0) {
     requestAnimationFrame(updateMobileNavIndicator);
     return;
   }
-
-  const left = btnRect.left - navRect.left;
-  const width = btnRect.width;
 
   indicator.style.transform = `translateX(${left}px)`;
   indicator.style.width = `${width}px`;
@@ -187,9 +179,17 @@ export function updateMobileNavIndicator() {
 }
 window.updateMobileNavIndicator = updateMobileNavIndicator;
 
-window.addEventListener("resize", () => {
-  updateMobileNavIndicator();
-});
+window.addEventListener("resize", updateMobileNavIndicator);
+window.addEventListener("load", () => requestAnimationFrame(updateMobileNavIndicator));
+requestAnimationFrame(updateMobileNavIndicator);
+
+if (typeof ResizeObserver !== "undefined") {
+  const mobileNavEl = document.getElementById("mobileBottomNav");
+  if (mobileNavEl) {
+    const ro = new ResizeObserver(() => updateMobileNavIndicator());
+    ro.observe(mobileNavEl);
+  }
+}
 
 // Listeners de navegação (PC & Mobile)
 document.querySelectorAll("[data-section]").forEach((btn) => {

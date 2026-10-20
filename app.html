@@ -129,7 +129,6 @@
       <div class="section-header">
         <div class="section-title-wrap">
           <h2>Suas Campanhas</h2>
-          <p>Mestres, mundos e crônicas em andamento</p>
         </div>
         <div class="section-actions">
           <button id="btnOpenJoinCampaign" class="btn btn-ghost" type="button">
@@ -230,7 +229,7 @@
             <span>Escudo do Mestre</span>
           </button>
 
-          <button type="button" class="camp-tab-btn" data-camptab="compendium">
+          <button type="button" class="camp-tab-btn gm-only" data-camptab="compendium">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
@@ -993,13 +992,6 @@
             </svg>
             <span>Inventário</span>
           </button>
-          <button type="button" class="ed-pill-tab ed-pill-home" id="btnEdPillHome" title="Voltar ao Painel Geral">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-              <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
-            <span>Home</span>
-          </button>
         </nav>
       </div>
 
@@ -1025,7 +1017,7 @@
             </div>
           </div>
 
-          <!-- Metadados do Topo (Espírito, Nível, Dinheiro, Controles) -->
+          <!-- Metadados do Topo (Espírito, Nível, Moedas, Controles) -->
           <div class="boreal-header-meta">
             <div class="boreal-meta-pill-group">
               <div class="boreal-header-spirit-box">
@@ -1047,9 +1039,29 @@
                 <input type="number" id="borealCharLevel" class="boreal-level-input" min="1" max="50" value="1">
               </div>
               <span class="boreal-meta-sep">•</span>
-              <div class="boreal-header-money-box" title="Dinheiro / Moedas">
-                <span class="boreal-meta-lbl">🪙 DINHEIRO:</span>
-                <input type="number" id="borealCharMoney" class="boreal-level-input" style="width: 55px;" min="0" value="0">
+              <div class="boreal-header-currencies" title="Moedas do Personagem">
+                <div class="boreal-coin-item coin-rubi">
+                  <span class="boreal-coin-lbl">RUBI:</span>
+                  <input type="number" id="borealCoinRubi" class="boreal-coin-input" min="0" step="1" value="0">
+                </div>
+                <span class="boreal-coin-sep">/</span>
+                <div class="boreal-coin-item coin-ouro">
+                  <span class="boreal-coin-lbl">OURO:</span>
+                  <input type="number" id="borealCoinOuro" class="boreal-coin-input" min="0" step="1" value="0">
+                </div>
+                <span class="boreal-coin-sep">/</span>
+                <div class="boreal-coin-item coin-prata">
+                  <span class="boreal-coin-lbl">PRATA:</span>
+                  <input type="number" id="borealCoinPrata" class="boreal-coin-input" min="0" step="1" value="0">
+                </div>
+                <span class="boreal-coin-sep">/</span>
+                <div class="boreal-coin-item coin-bronze">
+                  <span class="boreal-coin-lbl">BRONZE:</span>
+                  <input type="number" id="borealCoinBronze" class="boreal-coin-input" min="0" step="1" value="0">
+                </div>
+                <button type="button" class="btn-currency-convert" id="btnOpenCurrencyConvert" title="Converter Moedas">
+                  CONVERSÃO
+                </button>
               </div>
             </div>
 
@@ -1060,21 +1072,11 @@
               <button type="button" class="btn btn-ghost btn-xs" id="btnBorealMedNextCols" title="Ver Próximas Colunas">›</button>
             </div>
 
-            <!-- Engrenagem de Configurações Rápidas (Cor e Tema) -->
+            <!-- Engrenagem de Configurações Rápidas (Abre Modal Centralizado) -->
             <div class="boreal-settings-dropdown-wrapper">
               <button type="button" class="boreal-gear-btn" id="btnBorealGearMenu" title="Configurações da Ficha">
                 ⚙️
               </button>
-              <div class="boreal-settings-menu" id="borealSettingsMenu" style="display: none;">
-                <div class="boreal-settings-item">
-                  <span>Cor de Destaque:</span>
-                  <input type="color" id="borealSheetAccentPicker" value="#3b82f6" title="Escolha a cor principal">
-                </div>
-                <div class="boreal-settings-item">
-                  <span>Tema:</span>
-                  <button type="button" class="btn btn-ghost btn-xs" id="btnBorealToggleTheme">Alternar Claro/Escuro</button>
-                </div>
-              </div>
             </div>
           </div>
         </header>
@@ -1112,18 +1114,14 @@
                 <!-- Identificação Básica -->
                 <div class="boreal-fields-grid">
                   <div class="boreal-field-row">
-                    <label class="boreal-field-label">NOME:</label>
-                    <input type="text" id="borealFieldCharName" class="boreal-field-input" placeholder="Nome">
+                    <label class="boreal-field-label">IDADE:</label>
+                    <input type="text" id="borealFieldAge" class="boreal-field-input" placeholder="Idade">
                     <label class="boreal-field-label" style="margin-left: 6px;">NÍVEL:</label>
                     <input type="number" id="borealFieldCharLevel" class="boreal-field-input boreal-field-num" min="1" value="1">
                   </div>
                   <div class="boreal-field-row">
-                    <label class="boreal-field-label">ESPÍRITO:</label>
+                    <label class="boreal-field-label">NOME DO ESPÍRITO:</label>
                     <input type="text" id="borealFieldSpirit" class="boreal-field-input" placeholder="Nome do Espírito">
-                  </div>
-                  <div class="boreal-field-row">
-                    <label class="boreal-field-label">CLASSE:</label>
-                    <input type="text" id="borealFieldClass" class="boreal-field-input" placeholder="Classe">
                   </div>
                 </div>
               </div>
@@ -1477,13 +1475,6 @@
             </svg>
             <span>Itens</span>
           </button>
-          <button type="button" class="boreal-pill-tab boreal-pill-home" id="btnBorealPillHome" title="Voltar ao Painel Geral">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-              <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
-            <span>Home</span>
-          </button>
         </nav>
 
         <!-- ====================================================================
@@ -1822,16 +1813,6 @@
       </svg>
       <span>Configurações</span>
     </button>
-    <button class="mobile-nav-btn" id="mobileNavBtnSheet" type="button" style="display: none;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-        <polyline points="14 2 14 8 20 8"></polyline>
-        <line x1="16" y1="13" x2="8" y2="13"></line>
-        <line x1="16" y1="17" x2="8" y2="17"></line>
-        <polyline points="10 9 9 9 8 9"></polyline>
-      </svg>
-      <span>Ficha</span>
-    </button>
   </nav>
 
   <!-- ========================================================================
@@ -2115,29 +2096,143 @@
   </div>
 
   <!-- ========================================================================
-       8. MODAL: ATRIBUIR FICHA A JOGADOR
+       8. MODAL: ATRIBUIR FICHA A JOGADORES (MÚLTIPLOS PLAYERS)
        ======================================================================== -->
   <div id="modalAssignSheet" class="modal-overlay" role="dialog" aria-modal="true">
-    <div class="modal-box" style="max-width: 440px;">
+    <div class="modal-box" style="max-width: 460px;">
       <div class="modal-header">
-        <h3 class="modal-title">Atribuir Ficha</h3>
+        <h3 class="modal-title">Atribuir Jogadores</h3>
         <button type="button" class="btn-close-modal" data-close-modal="modalAssignSheet" aria-label="Fechar modal">&times;</button>
       </div>
-      <form id="formAssignSheet">
-        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px;">
-          Selecione o jogador que terá controle sobre esta ficha:
+      <div>
+        <p style="font-size: 0.86rem; color: var(--text-muted); margin-bottom: 14px;">
+          O Mestre sempre tem acesso a todas as fichas. Adicione ou remova jogadores que poderão visualizar e editar esta ficha:
         </p>
+
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label class="form-label">Jogadores Atribuídos</label>
+          <div id="assignedPlayersList" class="assign-players-list">
+            <!-- Renderizado via JS -->
+          </div>
+        </div>
+
         <div class="form-group">
-          <label class="form-label">Jogador da Mesa</label>
-          <select id="assignTargetPlayerSelect" class="form-input" style="padding-left: 14px;">
-            <!-- Opções via JS -->
-          </select>
+          <label class="form-label">Adicionar Jogador da Campanha</label>
+          <div id="availablePlayersList" class="assign-players-list">
+            <!-- Renderizado via JS -->
+          </div>
         </div>
+
         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-          <button type="button" class="btn btn-ghost" data-close-modal="modalAssignSheet">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Salvar Atribuição</button>
+          <button type="button" class="btn btn-primary" data-close-modal="modalAssignSheet">Concluir</button>
         </div>
-      </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       8B. MODAL: CONFIGURAÇÕES DA FICHA BOREAL (COR E TEMA CENTRALIZADO)
+       ======================================================================== -->
+  <div id="modalBorealSheetSettings" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-box" style="max-width: 380px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Configurações da Ficha</h3>
+        <button type="button" class="btn-close-modal" data-close-modal="modalBorealSheetSettings" aria-label="Fechar modal">&times;</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 18px; margin-top: 8px;">
+        <div class="boreal-settings-modal-row">
+          <div>
+            <strong style="display: block; font-size: 0.92rem; color: var(--text-main);">Cor Principal da Ficha</strong>
+            <span style="font-size: 0.78rem; color: var(--text-muted);">Personalize o destaque visual</span>
+          </div>
+          <input type="color" id="borealSheetAccentPicker" class="boreal-color-picker-input" value="#3b82f6" title="Escolha a cor principal">
+        </div>
+
+        <div class="boreal-settings-modal-row">
+          <div>
+            <strong style="display: block; font-size: 0.92rem; color: var(--text-main);">Modo de Exibição</strong>
+            <span style="font-size: 0.78rem; color: var(--text-muted);">Alternar entre tema claro e escuro</span>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" id="btnBorealToggleTheme">Alternar Tema</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       8C. MODAL: CONVERSÃO DE MOEDAS (BOREAL RPG)
+       ======================================================================== -->
+  <div id="modalCurrencyConvert" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-box" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Conversão de Moedas</h3>
+        <button type="button" class="btn-close-modal" data-close-modal="modalCurrencyConvert" aria-label="Fechar modal">&times;</button>
+      </div>
+
+      <div class="currency-convert-body">
+        <!-- Saldo Atual -->
+        <div class="currency-wallet-summary" id="convertWalletSummary">
+          <div class="wallet-chip coin-rubi"><span>RUBI:</span> <strong id="walletSummaryRubi">0</strong></div>
+          <div class="wallet-chip coin-ouro"><span>OURO:</span> <strong id="walletSummaryOuro">0</strong></div>
+          <div class="wallet-chip coin-prata"><span>PRATA:</span> <strong id="walletSummaryPrata">0</strong></div>
+          <div class="wallet-chip coin-bronze"><span>BRONZE:</span> <strong id="walletSummaryBronze">0</strong></div>
+        </div>
+
+        <!-- Tabela de Referência Rápida -->
+        <div class="currency-rates-guide">
+          <div><strong>1 <span class="txt-rubi">RUBI</span></strong> = 10 <span class="txt-ouro">OURO</span> = 100 <span class="txt-prata">PRATA</span> = 1000 <span class="txt-bronze">BRONZE</span></div>
+          <div><strong>1 <span class="txt-ouro">OURO</span></strong> = 10 <span class="txt-prata">PRATA</span> = 100 <span class="txt-bronze">BRONZE</span> &bull; <strong>1 <span class="txt-prata">PRATA</span></strong> = 10 <span class="txt-bronze">BRONZE</span></div>
+        </div>
+
+        <!-- Seleção de Moedas -->
+        <div class="currency-select-grid">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="convertFromCoin">Converter de</label>
+            <select id="convertFromCoin" class="form-input" style="padding-left: 12px;">
+              <option value="rubi">Rubi</option>
+              <option value="ouro">Ouro</option>
+              <option value="prata">Prata</option>
+              <option value="bronze" selected>Bronze</option>
+            </select>
+          </div>
+
+          <div class="currency-arrow-sep">➔</div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="convertToCoin">Para</label>
+            <select id="convertToCoin" class="form-input" style="padding-left: 12px;">
+              <option value="rubi">Rubi</option>
+              <option value="ouro">Ouro</option>
+              <option value="prata" selected>Prata</option>
+              <option value="bronze">Bronze</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Valor e Resultado Lado a Lado -->
+        <div class="currency-amount-grid">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" for="convertAmountInput">Quanto converter (Inteiro)</label>
+            <input type="number" id="convertAmountInput" class="form-input" style="padding-left: 12px;" min="1" step="1" placeholder="Ex: 10">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Total após converter</label>
+            <div id="convertResultPreview" class="currency-result-box">
+              Digite um valor
+            </div>
+          </div>
+        </div>
+
+        <!-- Mensagem de validação -->
+        <div id="convertValidationMsg" class="currency-validation-msg" style="display: none;"></div>
+
+        <!-- Botões de Ação -->
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
+          <button type="button" class="btn btn-ghost" data-close-modal="modalCurrencyConvert">Cancelar</button>
+          <button type="button" id="btnConfirmCurrencyConvert" class="btn btn-primary" disabled>Converter</button>
+        </div>
+      </div>
     </div>
   </div>
 
