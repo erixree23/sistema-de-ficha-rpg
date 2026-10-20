@@ -179,8 +179,8 @@ export function initCampaignWorkspace(campaign, user, switchSectionCallback, sho
   listenPlayers();
   if (isMasterUser) {
     listenNpcs(campaign.id);
+    listenCompendium(campaign.id);
   }
-  listenCompendium(campaign.id);
   populateCampaignSettings(campaign);
 
   // Alterna a tela para a visão de detalhes
@@ -316,14 +316,38 @@ function listenSheets(campaignId) {
   });
 }
 
+function getSheetAssignedList(sheet) {
+  if (Array.isArray(sheet.assignedPlayers) && sheet.assignedPlayers.length > 0) {
+    return sheet.assignedPlayers;
+  }
+  if (sheet.ownerId) {
+    return [{ uid: sheet.ownerId, name: sheet.ownerName || "Jogador" }];
+  }
+  return [];
+}
+
+function isUserAssignedToSheet(sheet, uid) {
+  if (!uid) return false;
+  if (sheet.ownerId === uid) return true;
+  if (Array.isArray(sheet.assignedUids) && sheet.assignedUids.includes(uid)) return true;
+  if (Array.isArray(sheet.assignedPlayers) && sheet.assignedPlayers.some((p) => p.uid === uid)) return true;
+  return false;
+}
+
+function getSheetOwnersDisplayText(sheet) {
+  const list = getSheetAssignedList(sheet);
+  if (list.length === 0) return "Não atribuída";
+  return list.map((p) => p.name).join(", ");
+}
+
 function renderSheets() {
   if (!sheetsGrid) return;
   sheetsGrid.innerHTML = "";
 
-  // Permissões: Mestre (GM) visualiza todas as fichas da campanha; Jogadores visualizam apenas as suas próprias fichas (ownerId == auth.currentUser.uid).
+  // Permissões: Mestre (GM) visualiza todas as fichas da campanha; Jogadores visualizam as fichas atribuídas a eles.
   const visibleSheets = isMasterUser
     ? campaignSheetsCache
-    : campaignSheetsCache.filter((s) => s.ownerId === currentAuthUser?.uid);
+    : campaignSheetsCache.filter((s) => isUserAssignedToSheet(s, currentAuthUser?.uid));
 
   if (visibleSheets.length === 0) {
     sheetsGrid.innerHTML = `
@@ -350,13 +374,21 @@ function renderSheets() {
     const charLevel = sheet.level || 1;
     const avatarUrl = sheet.avatarUrl || "";
 
-    const hpMax = sheet.hpMax ?? sheet.maxHp ?? 12;
-    const hpCurrent = sheet.hpCurrent ?? sheet.currentHp ?? hpMax;
-    const pmMax = sheet.pmMax ?? sheet.maxMp ?? 6;
-    const pmCurrent = sheet.pmCurrent ?? sheet.currentMp ?? pmMax;
-    const defense = sheet.defense ?? sheet.ac ?? 14;
+    const isBoreal = (sheet.system === "Boreal RPG" || activeCampaign?.system === "Boreal RPG");
 
-    const isOwner = sheet.ownerId === currentAuthUser?.uid;
+    const hpMax = sheet.hpMax ?? sheet.maxHp ?? (isBoreal ? 10 : 12);
+    const hpCurrent = sheet.hpCurrent ?? sheet.currentHp ?? hpMax;
+
+    const secondLabel = isBoreal ? "Resiliência" : "Mana (PM)";
+    const secondMax = isBoreal ? (sheet.resMax ?? 10) : (sheet.pmMax ?? sheet.maxMp ?? 6);
+    const secondCurrent = isBoreal ? (sheet.resCurrent ?? secondMax) : (sheet.pmCurrent ?? sheet.currentMp ?? secondMax);
+
+    const protMax = sheet.protMax ?? 0;
+    const protCur = sheet.protCurrent ?? protMax;
+    const protDisplay = isBoreal ? `${protCur}/${protMax}` : (sheet.protCurrent ?? sheet.protection ?? sheet.defense ?? sheet.ac ?? 0);
+
+    const isOwner = isUserAssignedToSheet(sheet, currentAuthUser?.uid);
+    const ownersDisplay = getSheetOwnersDisplayText(sheet);
 
     let avatarHtml = `<div class="sheet-avatar">${escapeHtml((charName || "P").charAt(0).toUpperCase())}</div>`;
     if (avatarUrl) {
@@ -383,23 +415,23 @@ function renderSheets() {
             <span class="vital-stat-val vital-hp">${hpCurrent}/${hpMax}</span>
           </div>
           <div class="vital-stat">
-            <span class="vital-stat-label">Mana (PM)</span>
-            <span class="vital-stat-val vital-mp">${pmCurrent}/${pmMax}</span>
+            <span class="vital-stat-label">${secondLabel}</span>
+            <span class="vital-stat-val vital-mp">${secondCurrent}/${secondMax}</span>
           </div>
           <div class="vital-stat">
-            <span class="vital-stat-label">Defesa (CA)</span>
-            <span class="vital-stat-val vital-ac">${defense}</span>
+            <span class="vital-stat-label">Proteção</span>
+            <span class="vital-stat-val vital-ac">${protDisplay}</span>
           </div>
         </div>
       </div>
 
       <div class="sheet-card-footer">
-        <div class="sheet-owner-badge" title="Jogador responsável">
+        <div class="sheet-owner-badge" title="Jogadores atribuídos: ${escapeHtml(ownersDisplay)}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
             <circle cx="12" cy="7" r="4"></circle>
           </svg>
-          <span>${escapeHtml(sheet.ownerName || "Não atribuída")}</span>
+          <span>${escapeHtml(ownersDisplay)}</span>
         </div>
 
         <div class="sheet-card-actions">
@@ -407,7 +439,7 @@ function renderSheets() {
             Abrir
           </button>
           ${isMasterUser ? `
-            <button type="button" class="btn btn-ghost btn-assign-sheet" data-id="${sheet.id}" title="Atribuir jogador">
+            <button type="button" class="btn btn-ghost btn-assign-sheet" data-id="${sheet.id}" title="Atribuir jogadores">
               Atribuir
             </button>
           ` : ""}
@@ -498,11 +530,21 @@ if (formCreateSheet) {
 
     let assignedUid = currentAuthUser.uid;
     let assignedName = currentAuthUser.displayName || currentAuthUser.email.split("@")[0];
+    let initialAssignedPlayers = [];
 
-    if (isMasterUser && sheetAssignPlayerSelect && sheetAssignPlayerSelect.value) {
-      const [uid, pName] = sheetAssignPlayerSelect.value.split("|");
-      assignedUid = uid;
-      assignedName = pName;
+    if (isMasterUser) {
+      if (sheetAssignPlayerSelect && sheetAssignPlayerSelect.value) {
+        const [uid, pName] = sheetAssignPlayerSelect.value.split("|");
+        assignedUid = uid;
+        assignedName = pName;
+        initialAssignedPlayers = [{ uid, name: pName }];
+      } else {
+        assignedUid = null;
+        assignedName = "Não atribuída";
+        initialAssignedPlayers = [];
+      }
+    } else {
+      initialAssignedPlayers = [{ uid: assignedUid, name: assignedName }];
     }
 
     if (!name) {
@@ -527,9 +569,13 @@ if (formCreateSheet) {
         characterClass: isBoreal ? "Iniciado" : "Aventureiro",
         race: "Humano",
         level: 1,
+        age: "",
+        currencies: { rubi: 0, ouro: 0, prata: 0, bronze: 0 },
         avatarUrl: "",
         ownerId: assignedUid,
         ownerName: assignedName,
+        assignedPlayers: initialAssignedPlayers,
+        assignedUids: initialAssignedPlayers.map((p) => p.uid),
         system: activeCampaign.system || "Escória de Deus RPG",
         hpMax: isBoreal ? 10 : 12,
         maxHp: isBoreal ? 10 : 12,
@@ -593,58 +639,125 @@ if (formCreateSheet) {
   });
 }
 
-// Modal Atribuir Ficha
+// Modal Atribuir Ficha (Múltiplos Jogadores)
 let sheetToAssign = null;
-const modalAssignSheet = document.getElementById("modalAssignSheet");
-const formAssignSheet = document.getElementById("formAssignSheet");
-const assignTargetPlayerSelect = document.getElementById("assignTargetPlayerSelect");
+const assignedPlayersListEl = document.getElementById("assignedPlayersList");
+const availablePlayersListEl = document.getElementById("availablePlayersList");
 
 function openAssignSheetModal(sheet) {
   sheetToAssign = sheet;
-  if (!assignTargetPlayerSelect || !activeCampaign) return;
-  assignTargetPlayerSelect.innerHTML = `<option value="">Não atribuída (Mestre)</option>`;
-
-  if (activeCampaign.masterId) {
-    const isMasterSelected = sheet.ownerId === activeCampaign.masterId ? "selected" : "";
-    const mName = activeCampaign.masterName || "Mestre";
-    assignTargetPlayerSelect.innerHTML += `<option value="${activeCampaign.masterId}|${escapeHtml(mName)}" ${isMasterSelected}>${escapeHtml(mName)} (Mestre)</option>`;
-  }
-
-  (activeCampaign.playerDetails || []).forEach((p) => {
-    if (p.uid !== activeCampaign.masterId) {
-      const selected = sheet.ownerId === p.uid ? "selected" : "";
-      assignTargetPlayerSelect.innerHTML += `<option value="${p.uid}|${escapeHtml(p.name)}" ${selected}>${escapeHtml(p.name)} (${escapeHtml(p.role || "Jogador")})</option>`;
-    }
-  });
+  if (!activeCampaign) return;
+  renderAssignSheetPlayersModal();
   openModalById("modalAssignSheet");
 }
 
-if (formAssignSheet) {
-  formAssignSheet.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (!sheetToAssign || !activeCampaign) return;
+function renderAssignSheetPlayersModal() {
+  if (!sheetToAssign || !activeCampaign || !assignedPlayersListEl || !availablePlayersListEl) return;
 
-    let targetUid = null;
-    let targetName = "Não atribuída";
+  const assignedList = getSheetAssignedList(sheetToAssign);
+  const assignedUidsSet = new Set(assignedList.map((p) => p.uid));
 
-    if (assignTargetPlayerSelect.value) {
-      const [uid, name] = assignTargetPlayerSelect.value.split("|");
-      targetUid = uid;
-      targetName = name;
-    }
-
-    try {
-      await updateDoc(doc(db, "campaigns", activeCampaign.id, "sheets", sheetToAssign.id), {
-        ownerId: targetUid,
-        ownerName: targetName
+  // Renderiza Jogadores Atribuídos
+  assignedPlayersListEl.innerHTML = "";
+  if (assignedList.length === 0) {
+    assignedPlayersListEl.innerHTML = `<div class="assign-empty-msg">Nenhum jogador atribuído no momento (Apenas o Mestre possui acesso).</div>`;
+  } else {
+    assignedList.forEach((player) => {
+      const row = document.createElement("div");
+      row.className = "assign-player-row";
+      const initial = (player.name || "J").charAt(0).toUpperCase();
+      row.innerHTML = `
+        <div class="assign-player-info">
+          <span class="assign-player-avatar">${escapeHtml(initial)}</span>
+          <span class="assign-player-name">${escapeHtml(player.name)}</span>
+        </div>
+        <button type="button" class="btn-remove-assigned" title="Remover jogador">&times;</button>
+      `;
+      row.querySelector(".btn-remove-assigned").addEventListener("click", async () => {
+        await removePlayerFromSheetAssignment(player.uid);
       });
-      closeModalById("modalAssignSheet");
-      showToast("Ficha reatribuída com sucesso!", "success");
-    } catch (err) {
-      console.error("Erro ao atribuir ficha:", err);
-      showToast("Erro ao atribuir ficha.", "error");
+      assignedPlayersListEl.appendChild(row);
+    });
+  }
+
+  // Monta lista de todos os membros da campanha disponíveis para atribuir
+  const campaignCandidates = [];
+  (activeCampaign.playerDetails || []).forEach((p) => {
+    if (p.uid && !assignedUidsSet.has(p.uid)) {
+      campaignCandidates.push({
+        uid: p.uid,
+        name: p.name || "Jogador",
+        role: p.uid === activeCampaign.masterId ? "Mestre" : (p.role || "Jogador")
+      });
     }
   });
+
+  availablePlayersListEl.innerHTML = "";
+  if (campaignCandidates.length === 0) {
+    availablePlayersListEl.innerHTML = `<div class="assign-empty-msg">Todos os jogadores da campanha já estão atribuídos ou não há mais jogadores na sala.</div>`;
+  } else {
+    campaignCandidates.forEach((cand) => {
+      const row = document.createElement("div");
+      row.className = "assign-player-row";
+      const initial = (cand.name || "J").charAt(0).toUpperCase();
+      row.innerHTML = `
+        <div class="assign-player-info">
+          <span class="assign-player-avatar">${escapeHtml(initial)}</span>
+          <span class="assign-player-name">${escapeHtml(cand.name)} <small style="color: var(--text-muted); font-weight: 400;">(${escapeHtml(cand.role)})</small></span>
+        </div>
+        <button type="button" class="btn-add-assigned">+ Adicionar</button>
+      `;
+      row.querySelector(".btn-add-assigned").addEventListener("click", async () => {
+        await addPlayerToSheetAssignment({ uid: cand.uid, name: cand.name });
+      });
+      availablePlayersListEl.appendChild(row);
+    });
+  }
+}
+
+async function addPlayerToSheetAssignment(playerObj) {
+  if (!sheetToAssign || !activeCampaign) return;
+  const currentList = getSheetAssignedList(sheetToAssign);
+  if (currentList.some((p) => p.uid === playerObj.uid)) return;
+
+  const updatedList = [...currentList, { uid: playerObj.uid, name: playerObj.name }];
+  await persistSheetAssignmentList(updatedList);
+}
+
+async function removePlayerFromSheetAssignment(uidToRemove) {
+  if (!sheetToAssign || !activeCampaign) return;
+  const currentList = getSheetAssignedList(sheetToAssign);
+  const updatedList = currentList.filter((p) => p.uid !== uidToRemove);
+  await persistSheetAssignmentList(updatedList);
+}
+
+async function persistSheetAssignmentList(updatedList) {
+  if (!sheetToAssign || !activeCampaign) return;
+  const assignedUids = updatedList.map((p) => p.uid);
+  const primaryOwnerId = updatedList.length > 0 ? updatedList[0].uid : null;
+  const ownerNameDisplay = updatedList.length > 0 ? updatedList.map((p) => p.name).join(", ") : "Não atribuída";
+
+  const payload = {
+    assignedPlayers: updatedList,
+    assignedUids,
+    ownerId: primaryOwnerId,
+    ownerName: ownerNameDisplay
+  };
+
+  try {
+    await updateDoc(doc(db, "campaigns", activeCampaign.id, "sheets", sheetToAssign.id), payload);
+    sheetToAssign = { ...sheetToAssign, ...payload };
+    const idx = campaignSheetsCache.findIndex((s) => s.id === sheetToAssign.id);
+    if (idx !== -1) {
+      campaignSheetsCache[idx] = { ...campaignSheetsCache[idx], ...payload };
+      renderSheets();
+    }
+    renderAssignSheetPlayersModal();
+    showToast("Atribuição da ficha atualizada!", "success");
+  } catch (err) {
+    console.error("Erro ao atualizar jogadores da ficha:", err);
+    showToast("Erro ao atualizar jogadores da ficha.", "error");
+  }
 }
 
 // Modal Confirmar Exclusão de Ficha
@@ -709,7 +822,7 @@ function openViewSheetModal(sheet) {
   if (borealBox) borealBox.style.display = "none";
   if (edBox) edBox.style.display = "block";
 
-  const isOwner = sheet.ownerId === currentAuthUser.uid;
+  const isOwner = isUserAssignedToSheet(sheet, currentAuthUser?.uid);
   const canEdit = isMasterUser || isOwner;
 
   const sheetBox = document.getElementById("edSheetBox");
@@ -745,7 +858,7 @@ function openViewSheetModal(sheet) {
   if (alignmentSelect) alignmentSelect.value = sheet.alignment || "Neutro";
   if (raceInput) raceInput.value = sheet.race || "Humano";
   if (levelInput) levelInput.value = sheet.level || 1;
-  if (ownerLabel) ownerLabel.textContent = sheet.ownerName || "Não atribuída (Mestre)";
+  if (ownerLabel) ownerLabel.textContent = getSheetOwnersDisplayText(sheet);
 
   // Cor de Destaque (--sheet-accent)
   const accentColor = sheet.accentColor || "#dc2626";
@@ -887,8 +1000,6 @@ function openViewSheetModal(sheet) {
     btnSave.style.display = canEdit ? "inline-flex" : "none";
   }
 
-  showSheetMobilePill();
-
   if (typeof storedSwitchSection === "function") {
     storedSwitchSection("sheet-view");
   } else {
@@ -896,6 +1007,8 @@ function openViewSheetModal(sheet) {
     const secSheet = document.getElementById("section-sheet-view");
     if (secSheet) secSheet.classList.add("active");
   }
+
+  showSheetMobilePill();
 }
 
 function setInputValue(id, val) {
@@ -3125,12 +3238,34 @@ function openBorealSheetModal(sheet) {
     habitos: ""
   };
 
+  // Inicializa Moedas (Rubi, Ouro, Prata, Bronze) com compatibilidade de ficha antiga
+  if (!currentViewingSheet.currencies || typeof currentViewingSheet.currencies !== "object") {
+    const legacyMoney = parseInt(currentViewingSheet.money, 10) || 0;
+    currentViewingSheet.currencies = {
+      rubi: 0,
+      ouro: 0,
+      prata: 0,
+      bronze: legacyMoney
+    };
+  } else {
+    currentViewingSheet.currencies = {
+      rubi: Math.max(0, parseInt(currentViewingSheet.currencies.rubi, 10) || 0),
+      ouro: Math.max(0, parseInt(currentViewingSheet.currencies.ouro, 10) || 0),
+      prata: Math.max(0, parseInt(currentViewingSheet.currencies.prata, 10) || 0),
+      bronze: Math.max(0, parseInt(currentViewingSheet.currencies.bronze, 10) || 0)
+    };
+  }
+
   // Preenche Cabeçalho Boreal
   setInputValue("borealCharName", currentViewingSheet.name || "Aventureiro");
   setInputValue("borealCharClass", currentViewingSheet.class || currentViewingSheet.characterClass || "Iniciado");
   setInputValue("borealSheetId", currentViewingSheet.id || "");
   setInputValue("borealCharLevel", currentViewingSheet.level || 1);
-  setInputValue("borealCharMoney", currentViewingSheet.money ?? 0);
+  setInputValue("borealCoinRubi", currentViewingSheet.currencies.rubi);
+  setInputValue("borealCoinOuro", currentViewingSheet.currencies.ouro);
+  setInputValue("borealCoinPrata", currentViewingSheet.currencies.prata);
+  setInputValue("borealCoinBronze", currentViewingSheet.currencies.bronze);
+  updateWalletSummaryDisplay();
 
   // Espírito no Topo
   const spiritSelect = document.getElementById("borealHeaderSpiritSelect");
@@ -3139,12 +3274,10 @@ function openBorealSheetModal(sheet) {
     spiritSelect.value = BOREAL_SPIRITS_DATA[spType] ? spType : "Sabedoria";
   }
 
-  // Preenche Identificação Básica Coluna 1
-  setInputValue("borealFieldCharName", currentViewingSheet.name || "Aventureiro");
+  // Preenche Identificação Básica Coluna 1 (Idade, Nível, Nome do Espírito)
+  setInputValue("borealFieldAge", currentViewingSheet.age ?? "");
   setInputValue("borealFieldCharLevel", currentViewingSheet.level || 1);
   setInputValue("borealFieldSpirit", currentViewingSheet.spirit?.nome || "Espírito Guardião");
-  setInputValue("borealFieldSpiritType", currentViewingSheet.spirit?.tipo || "Sabedoria");
-  setInputValue("borealFieldClass", currentViewingSheet.class || currentViewingSheet.characterClass || "Iniciado");
 
   // Cor de Destaque
   const accent = currentViewingSheet.accentColor || "#3b82f6";
@@ -3193,9 +3326,6 @@ function openBorealSheetModal(sheet) {
     t.classList.toggle("active", t.getAttribute("data-bcol") === "1");
   });
 
-  // Exibe a seção de visualização de ficha e posiciona a pílula deslizante
-  showSheetMobilePill();
-
   if (typeof storedSwitchSection === "function") {
     storedSwitchSection("sheet-view");
   } else {
@@ -3203,6 +3333,9 @@ function openBorealSheetModal(sheet) {
     const secSheet = document.getElementById("section-sheet-view");
     if (secSheet) secSheet.classList.add("active");
   }
+
+  // Exibe a pílula da ficha e posiciona o indicador deslizante após a seção estar visível
+  showSheetMobilePill();
 }
 
 // Aplicação de Cor de Destaque Boreal
@@ -4027,36 +4160,19 @@ if (btnAddBorealBp) {
 }
 
 // Sincronização Bidirecional e Auto-Save dos Campos da Ficha Boreal
-// 1. Nome do Personagem
+// 1. Nome do Personagem (Cabeçalho Boreal)
 const bCharName = document.getElementById("borealCharName");
-const bFieldCharName = document.getElementById("borealFieldCharName");
-if (bCharName && bFieldCharName) {
+if (bCharName) {
   bCharName.addEventListener("input", (e) => {
-    bFieldCharName.value = e.target.value;
-    if (currentViewingSheet) currentViewingSheet.name = e.target.value;
-    triggerBorealAutoSave();
-  });
-  bFieldCharName.addEventListener("input", (e) => {
-    bCharName.value = e.target.value;
     if (currentViewingSheet) currentViewingSheet.name = e.target.value;
     triggerBorealAutoSave();
   });
 }
 
-// 2. Classe do Personagem
+// 2. Classe do Personagem (Cabeçalho Boreal)
 const bCharClass = document.getElementById("borealCharClass");
-const bFieldClass = document.getElementById("borealFieldClass");
-if (bCharClass && bFieldClass) {
+if (bCharClass) {
   bCharClass.addEventListener("input", (e) => {
-    bFieldClass.value = e.target.value;
-    if (currentViewingSheet) {
-      currentViewingSheet.class = e.target.value;
-      currentViewingSheet.characterClass = e.target.value;
-    }
-    triggerBorealAutoSave();
-  });
-  bFieldClass.addEventListener("input", (e) => {
-    bCharClass.value = e.target.value;
     if (currentViewingSheet) {
       currentViewingSheet.class = e.target.value;
       currentViewingSheet.characterClass = e.target.value;
@@ -4065,7 +4181,16 @@ if (bCharClass && bFieldClass) {
   });
 }
 
-// 3. Nível do Personagem
+// 3. Idade do Personagem (Coluna 1 Boreal)
+const bFieldAge = document.getElementById("borealFieldAge");
+if (bFieldAge) {
+  bFieldAge.addEventListener("input", (e) => {
+    if (currentViewingSheet) currentViewingSheet.age = e.target.value;
+    triggerBorealAutoSave();
+  });
+}
+
+// 4. Nível do Personagem
 const bCharLevel = document.getElementById("borealCharLevel");
 const bFieldLevel = document.getElementById("borealFieldCharLevel");
 if (bCharLevel && bFieldLevel) {
@@ -4081,16 +4206,248 @@ if (bCharLevel && bFieldLevel) {
   });
 }
 
-// 4. Dinheiro do Personagem
-const bCharMoney = document.getElementById("borealCharMoney");
-if (bCharMoney) {
-  bCharMoney.addEventListener("input", (e) => {
-    if (currentViewingSheet) currentViewingSheet.money = parseInt(e.target.value, 10) || 0;
+// 5. Moedas do Personagem (RUBI / OURO / PRATA / BRONZE) + Modal de Conversão
+const BOREAL_COIN_RATES = {
+  rubi: 1000,
+  ouro: 100,
+  prata: 10,
+  bronze: 1
+};
+
+const BOREAL_COIN_NAMES = {
+  rubi: "Rubi",
+  ouro: "Ouro",
+  prata: "Prata",
+  bronze: "Bronze"
+};
+
+const bCoinInputs = {
+  rubi: document.getElementById("borealCoinRubi"),
+  ouro: document.getElementById("borealCoinOuro"),
+  prata: document.getElementById("borealCoinPrata"),
+  bronze: document.getElementById("borealCoinBronze")
+};
+
+Object.entries(bCoinInputs).forEach(([coinKey, inputEl]) => {
+  if (!inputEl) return;
+  inputEl.addEventListener("input", (e) => {
+    const digitsOnly = String(e.target.value || "").replace(/\D+/g, "");
+    const cleanVal = digitsOnly === "" ? 0 : parseInt(digitsOnly, 10);
+    if (e.target.value !== "" && e.target.value !== String(cleanVal)) {
+      e.target.value = String(cleanVal);
+    }
+    if (currentViewingSheet) {
+      currentViewingSheet.currencies = currentViewingSheet.currencies || { rubi: 0, ouro: 0, prata: 0, bronze: 0 };
+      currentViewingSheet.currencies[coinKey] = cleanVal;
+    }
+    updateWalletSummaryDisplay();
     triggerBorealAutoSave();
+  });
+  inputEl.addEventListener("blur", (e) => {
+    if (String(e.target.value).trim() === "") {
+      e.target.value = "0";
+    }
+  });
+});
+
+function readBorealCurrenciesFromInputs() {
+  const rubi = Math.max(0, parseInt(document.getElementById("borealCoinRubi")?.value, 10) || 0);
+  const ouro = Math.max(0, parseInt(document.getElementById("borealCoinOuro")?.value, 10) || 0);
+  const prata = Math.max(0, parseInt(document.getElementById("borealCoinPrata")?.value, 10) || 0);
+  const bronze = Math.max(0, parseInt(document.getElementById("borealCoinBronze")?.value, 10) || 0);
+  if (currentViewingSheet) {
+    currentViewingSheet.currencies = { rubi, ouro, prata, bronze };
+  }
+  return { rubi, ouro, prata, bronze };
+}
+
+function syncBorealCoinInputsFromSheet() {
+  if (!currentViewingSheet || !currentViewingSheet.currencies) return;
+  setInputValue("borealCoinRubi", currentViewingSheet.currencies.rubi ?? 0);
+  setInputValue("borealCoinOuro", currentViewingSheet.currencies.ouro ?? 0);
+  setInputValue("borealCoinPrata", currentViewingSheet.currencies.prata ?? 0);
+  setInputValue("borealCoinBronze", currentViewingSheet.currencies.bronze ?? 0);
+  updateWalletSummaryDisplay();
+}
+
+function updateWalletSummaryDisplay() {
+  const cur = currentViewingSheet?.currencies || { rubi: 0, ouro: 0, prata: 0, bronze: 0 };
+  setElementText("walletSummaryRubi", cur.rubi ?? 0);
+  setElementText("walletSummaryOuro", cur.ouro ?? 0);
+  setElementText("walletSummaryPrata", cur.prata ?? 0);
+  setElementText("walletSummaryBronze", cur.bronze ?? 0);
+}
+
+// Modal de Conversão de Moedas (IDs sincronizados com app.html)
+const btnOpenCurrencyConvert = document.getElementById("btnOpenCurrencyConvert");
+const currencyConvertFrom = document.getElementById("convertFromCoin");
+const currencyConvertTo = document.getElementById("convertToCoin");
+const currencyConvertAmount = document.getElementById("convertAmountInput");
+const currencyConvertResult = document.getElementById("convertResultPreview");
+const currencyConvertStatusMsg = document.getElementById("convertValidationMsg");
+const btnConfirmCurrencyConvert = document.getElementById("btnConfirmCurrencyConvert");
+
+function setConvertStatusMessage(text, type = "") {
+  if (!currencyConvertStatusMsg) return;
+  if (!text) {
+    currencyConvertStatusMsg.style.display = "none";
+    currencyConvertStatusMsg.textContent = "";
+    currencyConvertStatusMsg.className = "currency-validation-msg";
+    return;
+  }
+  currencyConvertStatusMsg.style.display = "block";
+  currencyConvertStatusMsg.textContent = text;
+  currencyConvertStatusMsg.className = type ? `currency-validation-msg ${type}` : "currency-validation-msg";
+}
+
+function evaluateCurrencyConversion() {
+  if (!currentViewingSheet || !currencyConvertFrom || !currencyConvertTo || !currencyConvertAmount) {
+    return { valid: false };
+  }
+
+  const currencies = readBorealCurrenciesFromInputs();
+  updateWalletSummaryDisplay();
+
+  const fromCoin = currencyConvertFrom.value;
+  const toCoin = currencyConvertTo.value;
+  const availableFrom = Math.max(0, parseInt(currencies[fromCoin], 10) || 0);
+  const currentTo = Math.max(0, parseInt(currencies[toCoin], 10) || 0);
+
+  const rawStr = String(currencyConvertAmount.value ?? "").trim();
+
+  // Sem valor digitado ainda
+  if (!rawStr) {
+    if (currencyConvertResult) currencyConvertResult.textContent = "Digite um valor";
+    setConvertStatusMessage("");
+    if (btnConfirmCurrencyConvert) btnConfirmCurrencyConvert.disabled = true;
+    return { valid: false };
+  }
+
+  // Impede valores cortados/decimais (ex: 1,5 ou 1.5)
+  if (rawStr.includes(".") || rawStr.includes(",") || !/^\d+$/.test(rawStr)) {
+    if (currencyConvertResult) currencyConvertResult.textContent = "Valor inválido";
+    setConvertStatusMessage("Não é permitido converter valores cortados. Digite apenas números inteiros.", "error");
+    if (btnConfirmCurrencyConvert) btnConfirmCurrencyConvert.disabled = true;
+    return { valid: false };
+  }
+
+  const amount = parseInt(rawStr, 10);
+  if (!Number.isInteger(amount) || amount <= 0) {
+    if (currencyConvertResult) currencyConvertResult.textContent = "0";
+    setConvertStatusMessage("Informe um valor inteiro maior que zero.", "error");
+    if (btnConfirmCurrencyConvert) btnConfirmCurrencyConvert.disabled = true;
+    return { valid: false };
+  }
+
+  if (fromCoin === toCoin) {
+    if (currencyConvertResult) currencyConvertResult.textContent = `${currentTo} ${BOREAL_COIN_NAMES[toCoin]}`;
+    setConvertStatusMessage("Selecione moedas diferentes para converter.", "error");
+    if (btnConfirmCurrencyConvert) btnConfirmCurrencyConvert.disabled = true;
+    return { valid: false };
+  }
+
+  const fromRate = BOREAL_COIN_RATES[fromCoin] || 1;
+  const toRate = BOREAL_COIN_RATES[toCoin] || 1;
+
+  // Verifica se o jogador possui saldo suficiente da moeda de origem
+  if (amount > availableFrom) {
+    if (currencyConvertResult) currencyConvertResult.textContent = "Saldo insuficiente";
+    setConvertStatusMessage(
+      `Você não tem ${BOREAL_COIN_NAMES[fromCoin]} suficiente (Você tem ${availableFrom} ${BOREAL_COIN_NAMES[fromCoin]}).`,
+      "error"
+    );
+    if (btnConfirmCurrencyConvert) btnConfirmCurrencyConvert.disabled = true;
+    return { valid: false };
+  }
+
+  const totalBronzeValue = amount * fromRate;
+
+  // Verifica se atinge o valor mínimo para 1 unidade inteira da moeda destino
+  if (totalBronzeValue < toRate) {
+    const minRequired = Math.ceil(toRate / fromRate);
+    if (currencyConvertResult) currencyConvertResult.textContent = "Insuficiente";
+    setConvertStatusMessage(
+      `Não há o suficiente para converter! O mínimo é ${minRequired} ${BOREAL_COIN_NAMES[fromCoin]} para gerar 1 ${BOREAL_COIN_NAMES[toCoin]}.`,
+      "error"
+    );
+    if (btnConfirmCurrencyConvert) btnConfirmCurrencyConvert.disabled = true;
+    return { valid: false };
+  }
+
+  // Verifica se a conversão gera um valor inteiro exato (sem valor cortado/quebrado)
+  if (totalBronzeValue % toRate !== 0) {
+    const stepRequired = Math.ceil(toRate / fromRate);
+    if (currencyConvertResult) currencyConvertResult.textContent = "Valor cortado";
+    setConvertStatusMessage(
+      `Não é possível converter valores cortados! Digite múltiplos de ${stepRequired} ${BOREAL_COIN_NAMES[fromCoin]}.`,
+      "error"
+    );
+    if (btnConfirmCurrencyConvert) btnConfirmCurrencyConvert.disabled = true;
+    return { valid: false };
+  }
+
+  const gainedTo = totalBronzeValue / toRate;
+  const finalToBalance = currentTo + gainedTo;
+  const finalFromBalance = availableFrom - amount;
+
+  if (currencyConvertResult) {
+    currencyConvertResult.textContent = `+${gainedTo} ${BOREAL_COIN_NAMES[toCoin]} (Total: ${finalToBalance})`;
+  }
+  setConvertStatusMessage(
+    `Você converterá ${amount} ${BOREAL_COIN_NAMES[fromCoin]} em +${gainedTo} ${BOREAL_COIN_NAMES[toCoin]} (Ficará com ${finalFromBalance} ${BOREAL_COIN_NAMES[fromCoin]} e ${finalToBalance} ${BOREAL_COIN_NAMES[toCoin]}).`,
+    "success"
+  );
+  if (btnConfirmCurrencyConvert) btnConfirmCurrencyConvert.disabled = false;
+
+  return {
+    valid: true,
+    fromCoin,
+    toCoin,
+    amount,
+    gainedTo,
+    finalFromBalance,
+    finalToBalance
+  };
+}
+
+if (btnOpenCurrencyConvert) {
+  btnOpenCurrencyConvert.addEventListener("click", () => {
+    if (!currentViewingSheet) return;
+    readBorealCurrenciesFromInputs();
+    updateWalletSummaryDisplay();
+    if (currencyConvertAmount) currencyConvertAmount.value = "";
+    evaluateCurrencyConversion();
+    openModalById("modalCurrencyConvert");
   });
 }
 
-// 5. Nome do Espírito
+if (currencyConvertFrom) {
+  currencyConvertFrom.addEventListener("change", evaluateCurrencyConversion);
+}
+if (currencyConvertTo) {
+  currencyConvertTo.addEventListener("change", evaluateCurrencyConversion);
+}
+if (currencyConvertAmount) {
+  currencyConvertAmount.addEventListener("input", evaluateCurrencyConversion);
+}
+
+if (btnConfirmCurrencyConvert) {
+  btnConfirmCurrencyConvert.addEventListener("click", () => {
+    const res = evaluateCurrencyConversion();
+    if (!res.valid || !currentViewingSheet) return;
+
+    currentViewingSheet.currencies = currentViewingSheet.currencies || { rubi: 0, ouro: 0, prata: 0, bronze: 0 };
+    currentViewingSheet.currencies[res.fromCoin] = res.finalFromBalance;
+    currentViewingSheet.currencies[res.toCoin] = res.finalToBalance;
+
+    syncBorealCoinInputsFromSheet();
+    triggerBorealAutoSave();
+    closeModalById("modalCurrencyConvert");
+    showToast(`Conversão realizada: -${res.amount} ${BOREAL_COIN_NAMES[res.fromCoin]} → +${res.gainedTo} ${BOREAL_COIN_NAMES[res.toCoin]}!`, "success");
+  });
+}
+
+// 6. Nome do Espírito
 const bFieldSpirit = document.getElementById("borealFieldSpirit");
 const spFieldNome = document.getElementById("spiritFieldNome");
 if (bFieldSpirit && spFieldNome) {
@@ -4106,7 +4463,7 @@ if (bFieldSpirit && spFieldNome) {
   });
 }
 
-// 6. Campos adicionais do Espírito Drawer disparando AutoSave
+// 7. Campos adicionais do Espírito Drawer disparando AutoSave
 ["spiritFieldNivel", "spiritDtFisico", "spiritDtMagico", "spiritDtMental", "spiritAttrCorpo", "spiritAttrPoder", "spiritAttrMente", "spiritDescAparencia", "spiritDescPersonalidade", "spiritDescHabitos"].forEach((id) => {
   const el = document.getElementById(id);
   if (el) {
@@ -4114,22 +4471,7 @@ if (bFieldSpirit && spFieldNome) {
   }
 });
 
-// Sincronização dos Seletores de Tipo do Espírito
-const fieldSpiritTypeSelect = document.getElementById("borealFieldSpiritType");
-if (fieldSpiritTypeSelect) {
-  fieldSpiritTypeSelect.addEventListener("change", (e) => {
-    if (!currentViewingSheet) return;
-    const newSpType = e.target.value;
-    currentViewingSheet.spirit = currentViewingSheet.spirit || {};
-    currentViewingSheet.spirit.tipo = newSpType;
-    setInputValue("borealHeaderSpiritSelect", newSpType);
-    setInputValue("spiritFieldTipo", newSpType);
-    populateBorealMagicOptions();
-    populateSpiritDrawerFields();
-    triggerBorealAutoSave();
-  });
-}
-
+// Sincronização do Seletor de Tipo do Espírito (Drawer <-> Cabeçalho)
 const drawerSpiritTypeSelect = document.getElementById("spiritFieldTipo");
 if (drawerSpiritTypeSelect) {
   drawerSpiritTypeSelect.addEventListener("change", (e) => {
@@ -4138,7 +4480,6 @@ if (drawerSpiritTypeSelect) {
     currentViewingSheet.spirit = currentViewingSheet.spirit || {};
     currentViewingSheet.spirit.tipo = newSpType;
     setInputValue("borealHeaderSpiritSelect", newSpType);
-    setInputValue("borealFieldSpiritType", newSpType);
     populateBorealMagicOptions();
     populateSpiritDrawerFields();
     triggerBorealAutoSave();
@@ -4459,13 +4800,8 @@ if (btnOpenPortrait2) {
 }
 
 // ==========================================================================
-// CONTROLE DE PÍLULA FLUTUANTE (HOME & NAVEGAÇÃO MOBILE)
+// CONTROLE DE PÍLULA FLUTUANTE E INDICADOR DESLIZANTE (MOBILE)
 // ==========================================================================
-const btnBorealPillHome = document.getElementById("btnBorealPillHome");
-const btnEdPillHome = document.getElementById("btnEdPillHome");
-const mobileNavBtnSheet = document.getElementById("mobileNavBtnSheet");
-
-// Mostra a pílula de colunas da ficha (1, 2, 3, Home) e esconde a pílula geral
 function showSheetMobilePill() {
   const bottomNav = document.getElementById("mobileBottomNav");
   if (bottomNav) bottomNav.style.display = "none";
@@ -4482,65 +4818,33 @@ function showSheetMobilePill() {
   });
 }
 
-// Ao apertar Home na pílula da ficha: mantém a ficha aberta, esconde a pílula da ficha e mostra a pílula da Home (+ botão Ficha)
-function showHomeMobilePillInSheet() {
-  const borealPill = document.getElementById("borealMobileColumnPill");
-  if (borealPill) borealPill.style.display = "none";
-
-  const edPill = document.getElementById("edMobileColumnPill");
-  if (edPill) edPill.style.display = "none";
-
-  const bottomNav = document.getElementById("mobileBottomNav");
-  if (bottomNav) bottomNav.style.display = "";
-
-  if (mobileNavBtnSheet) {
-    mobileNavBtnSheet.style.display = "flex";
-  }
-
-  requestAnimationFrame(() => {
-    if (typeof window.updateMobileNavIndicator === "function") {
-      window.updateMobileNavIndicator();
-    }
-  });
-}
-
-if (btnBorealPillHome) btnBorealPillHome.addEventListener("click", showHomeMobilePillInSheet);
-if (btnEdPillHome) btnEdPillHome.addEventListener("click", showHomeMobilePillInSheet);
-
-if (mobileNavBtnSheet) {
-  mobileNavBtnSheet.addEventListener("click", () => {
-    showSheetMobilePill();
-  });
-}
-
 // Indicadores deslizantes suaves para as pílulas móveis da ficha
+// (Usa getComputedStyle e offsetLeft/offsetWidth pois elementos position:fixed têm offsetParent === null)
 export function updateBorealPillIndicator() {
   const nav = document.getElementById("borealMobileColumnPill");
   const indicator = document.getElementById("borealPillIndicator");
   if (!nav || !indicator) return;
 
-  if (nav.offsetParent === null || window.innerWidth > 768) {
+  const navStyle = window.getComputedStyle(nav);
+  if (navStyle.display === "none" || navStyle.visibility === "hidden" || window.innerWidth > 768) {
     indicator.style.opacity = "0";
     return;
   }
 
   const activeBtn = nav.querySelector(".boreal-pill-tab.active");
-  if (!activeBtn || activeBtn.offsetParent === null || activeBtn.style.display === "none") {
+  if (!activeBtn || window.getComputedStyle(activeBtn).display === "none") {
     indicator.style.opacity = "0";
     return;
   }
 
-  const navRect = nav.getBoundingClientRect();
-  const btnRect = activeBtn.getBoundingClientRect();
-  if (btnRect.width === 0) {
+  const left = activeBtn.offsetLeft;
+  const width = activeBtn.offsetWidth;
+  if (width === 0) {
     requestAnimationFrame(updateBorealPillIndicator);
     return;
   }
 
-  const left = btnRect.left - navRect.left;
-  const width = btnRect.width;
-
-  indicator.style.transform = `translateX(${left}px)`;
+  indicator.style.transform = `translate3d(${left}px, 0, 0)`;
   indicator.style.width = `${width}px`;
   indicator.style.opacity = "1";
 }
@@ -4550,28 +4854,26 @@ export function updateEdPillIndicator() {
   const indicator = document.getElementById("edPillIndicator");
   if (!nav || !indicator) return;
 
-  if (nav.offsetParent === null || window.innerWidth > 768) {
+  const navStyle = window.getComputedStyle(nav);
+  if (navStyle.display === "none" || navStyle.visibility === "hidden" || window.innerWidth > 768) {
     indicator.style.opacity = "0";
     return;
   }
 
   const activeBtn = nav.querySelector(".ed-pill-tab.active");
-  if (!activeBtn || activeBtn.offsetParent === null || activeBtn.style.display === "none") {
+  if (!activeBtn || window.getComputedStyle(activeBtn).display === "none") {
     indicator.style.opacity = "0";
     return;
   }
 
-  const navRect = nav.getBoundingClientRect();
-  const btnRect = activeBtn.getBoundingClientRect();
-  if (btnRect.width === 0) {
+  const left = activeBtn.offsetLeft;
+  const width = activeBtn.offsetWidth;
+  if (width === 0) {
     requestAnimationFrame(updateEdPillIndicator);
     return;
   }
 
-  const left = btnRect.left - navRect.left;
-  const width = btnRect.width;
-
-  indicator.style.transform = `translateX(${left}px)`;
+  indicator.style.transform = `translate3d(${left}px, 0, 0)`;
   indicator.style.width = `${width}px`;
   indicator.style.opacity = "1";
 }
@@ -4584,16 +4886,23 @@ window.addEventListener("resize", () => {
   updateEdPillIndicator();
 });
 
-// Engrenagem: Troca de Cor e Tema
+if (typeof ResizeObserver !== "undefined") {
+  const borealPillEl = document.getElementById("borealMobileColumnPill");
+  if (borealPillEl) {
+    new ResizeObserver(() => updateBorealPillIndicator()).observe(borealPillEl);
+  }
+  const edPillEl = document.getElementById("edMobileColumnPill");
+  if (edPillEl) {
+    new ResizeObserver(() => updateEdPillIndicator()).observe(edPillEl);
+  }
+}
+
+// Engrenagem: Abre Modal Centralizado de Configurações da Ficha Boreal
 const btnBorealGear = document.getElementById("btnBorealGearMenu");
-const borealSettingsMenu = document.getElementById("borealSettingsMenu");
-if (btnBorealGear && borealSettingsMenu) {
+if (btnBorealGear) {
   btnBorealGear.addEventListener("click", (e) => {
     e.stopPropagation();
-    borealSettingsMenu.style.display = borealSettingsMenu.style.display === "none" ? "flex" : "none";
-  });
-  document.addEventListener("click", () => {
-    if (borealSettingsMenu) borealSettingsMenu.style.display = "none";
+    openModalById("modalBorealSheetSettings");
   });
 }
 
@@ -4653,10 +4962,17 @@ borealPillTabs.forEach((tab) => {
 async function saveBorealSheet(isAuto = false) {
   if (!currentViewingSheet || !activeCampaign) return;
 
-  const charName = document.getElementById("borealCharName")?.value.trim() || document.getElementById("borealFieldCharName")?.value.trim() || currentViewingSheet.name || "Aventureiro";
-  const charClass = document.getElementById("borealFieldClass")?.value.trim() || document.getElementById("borealCharClass")?.value.trim() || currentViewingSheet.class || currentViewingSheet.characterClass || "Iniciado";
+  const charName = document.getElementById("borealCharName")?.value.trim() || currentViewingSheet.name || "Aventureiro";
+  const charClass = document.getElementById("borealCharClass")?.value.trim() || currentViewingSheet.class || currentViewingSheet.characterClass || "Iniciado";
+  const age = document.getElementById("borealFieldAge")?.value.trim() ?? currentViewingSheet.age ?? "";
   const level = parseInt(document.getElementById("borealCharLevel")?.value, 10) || parseInt(document.getElementById("borealFieldCharLevel")?.value, 10) || currentViewingSheet.level || 1;
-  const money = parseInt(document.getElementById("borealCharMoney")?.value, 10) || currentViewingSheet.money || 0;
+
+  const currencies = {
+    rubi: Math.max(0, parseInt(document.getElementById("borealCoinRubi")?.value, 10) || 0),
+    ouro: Math.max(0, parseInt(document.getElementById("borealCoinOuro")?.value, 10) || 0),
+    prata: Math.max(0, parseInt(document.getElementById("borealCoinPrata")?.value, 10) || 0),
+    bronze: Math.max(0, parseInt(document.getElementById("borealCoinBronze")?.value, 10) || 0)
+  };
   const accentColor = currentViewingSheet.accentColor || "#3b82f6";
 
   const corpo = parseInt(document.getElementById("borealAttrCorpo")?.value, 10) || 0;
@@ -4684,8 +5000,9 @@ async function saveBorealSheet(isAuto = false) {
     lastName: charName.split(" ").slice(1).join(" ") || "",
     class: charClass,
     characterClass: charClass,
+    age,
     level,
-    money,
+    currencies,
     accentColor,
     avatarUrl: currentViewingSheet.avatarUrl || "",
     system: "Boreal RPG",

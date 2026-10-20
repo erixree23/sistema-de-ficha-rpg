@@ -4506,3 +4506,322 @@ main.dashboard-content,
 .npc-active-badge .btn-remove-skill-tag:hover {
   opacity: 1;
 }
+
+/* ==========================================================================
+   SISTEMA DE MOEDAS BOREAL (RUBI / OURO / PRATA / BRONZE + CONVERSÃO)
+   ========================================================================== */
+.boreal-meta-pill-group {
+  flex-wrap: wrap;
+  border-radius: 16px;
+}
+
+.boreal-header-currencies {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.boreal-coin-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.boreal-coin-lbl {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.coin-rubi .boreal-coin-lbl,
+.txt-rubi {
+  color: #ef4444;
+}
+
+.coin-ouro .boreal-coin-lbl,
+.txt-ouro {
+  color: #f59e0b;
+}
+
+.coin-prata .boreal-coin-lbl,
+.txt-prata {
+  color: #94a3b8;
+}
+
+.coin-bronze .boreal-coin-lbl,
+.txt-bronze {
+  color: #d97706;
+}
+
+.boreal-coin-input {
+  width: 58px;
+  min-width: 48px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--boreal-border);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-weight: 800;
+  font-size: 0.84rem;
+  color: var(--text-main);
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s ease;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.boreal-coin-input::-webkit-outer-spin-button,
+.boreal-coin-input::-webkit-inner-spin-button,
+#convertAmountInput::-webkit-outer-spin-button,
+#convertAmountInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.boreal-coin-input:focus {
+  border-color: var(--sheet-accent);
+}
+
+.boreal-coin-sep {
+  color: var(--text-subtle);
+  font-size: 0.78rem;
+  font-weight: 700;
+  user-select: none;
+}
+
+.btn-currency-convert {
+  margin-left: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: var(--sheet-accent, #3b82f6);
+  color: #ffffff;
+  border: none;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: transform 0.18s ease, filter 0.18s ease;
+  box-shadow: 0 2px 8px var(--sheet-accent-glow, rgba(59, 130, 246, 0.35));
+}
+
+.btn-currency-convert:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+/* Modal de Conversão de Moedas */
+.currency-convert-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.currency-wallet-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.wallet-chip {
+  background: var(--input-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.wallet-chip strong {
+  font-size: 0.98rem;
+  color: var(--text-main);
+}
+
+.currency-rates-guide {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+
+.currency-select-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 10px;
+}
+
+.currency-arrow-sep {
+  padding-bottom: 10px;
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.currency-amount-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.currency-result-box {
+  min-height: 42px;
+  background: var(--input-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.86rem;
+  color: var(--text-main);
+  text-align: center;
+}
+
+.currency-validation-msg {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.currency-validation-msg.error {
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+.currency-validation-msg.success {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+}
+
+[data-theme="light"] .currency-validation-msg.error {
+  color: #dc2626;
+}
+
+[data-theme="light"] .currency-validation-msg.success {
+  color: #059669;
+}
+
+@media (max-width: 520px) {
+  .currency-wallet-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .currency-amount-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Modal Centralizado de Configurações da Ficha */
+.boreal-settings-modal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--input-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+}
+
+.boreal-color-picker-input {
+  width: 44px;
+  height: 36px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  padding: 2px;
+}
+
+/* Modal Atribuir Múltiplos Jogadores */
+.assign-players-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 4px 2px;
+}
+
+.assign-player-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--input-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+}
+
+.assign-player-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.assign-player-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-remove-assigned {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.btn-remove-assigned:hover {
+  background: rgba(239, 68, 68, 0.25);
+  transform: scale(1.06);
+}
+
+.btn-add-assigned {
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--glass-border-focus);
+  background: rgba(139, 92, 246, 0.16);
+  color: var(--text-main);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.btn-add-assigned:hover {
+  background: var(--accent-primary);
+  color: #ffffff;
+}
+
